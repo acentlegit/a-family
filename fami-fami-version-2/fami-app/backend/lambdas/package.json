@@ -1,0 +1,13 @@
+{
+  "name": "email-notifications-lambda",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for sending birthday and anniversary email notifications",
+  "main": "emailNotifications.js",
+  "scripts": {
+    "test": "node emailNotifications.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.6",
+    "pg": "^8.11.3"
+  }
+}

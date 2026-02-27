@@ -1,0 +1,63 @@
+# ========================================
+# .env FILE FOR EC2 BACKEND SERVER
+# Copy this entire content into your .env file
+# ========================================
+
+# Server Configuration
+NODE_ENV=production
+PORT=5000
+EC2_IP=107.20.87.206
+
+# MongoDB Connection
+# Replace with your actual MongoDB connection string
+# Format: mongodb://username:password@host:port/database
+# Example: mongodb://admin:password123@cluster0.mongodb.net:27017/fami?authSource=admin
+MONGODB_URI=your_mongodb_connection_string_here
+
+# JWT Secrets (Generate strong random strings - minimum 32 characters)
+# You can generate random strings using: openssl rand -base64 32
+JWT_SECRET=your_jwt_secret_here_min_32_characters_long_and_random
+JWT_REFRESH_SECRET=your_jwt_refresh_secret_here_min_32_characters_long_and_random
+JWT_EXPIRE=7d
+
+# Email Configuration (SendGrid)
+# Get your API key from: https://app.sendgrid.com/settings/api_keys
+SENDGRID_API_KEY=your_sendgrid_api_key_here
+SENDGRID_FROM_EMAIL=noreply@fami.live
+FROM_EMAIL=noreply@fami.live
+
+# Frontend URL (Your Domain - ARAKALA.NET)
+CLIENT_URL=https://www.arakala.net
+
+# Backend Base URL
+BASE_URL=http://107.20.87.206:5000
+
+# AWS S3 Configuration
+# Get these from AWS Console → IAM → Users → Security Credentials
+AWS_ACCESS_KEY_ID=your_aws_access_key_id_here
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key_here
+AWS_S3_BUCKET=a-family-media
+AWS_REGION=us-east-1
+
+# LiveKit Configuration (for video calls)
+# Get these from your LiveKit dashboard
+LIVEKIT_API_KEY=your_livekit_api_key_here
+LIVEKIT_API_SECRET=your_livekit_api_secret_here
+LIVEKIT_URL=your_livekit_url_here
+
+# Super Admin Account
+# This will be created automatically when server starts
+SUPER_ADMIN_EMAIL=admin@fami.live
+SUPER_ADMIN_PASSWORD=your_secure_password_here_change_this
+SUPER_ADMIN_FIRST_NAME=Admin
+SUPER_ADMIN_LAST_NAME=User
+
+# ========================================
+# IMPORTANT NOTES:
+# ========================================
+# 1. Replace ALL "your_*_here" placeholders with actual values
+# 2. CLIENT_URL is set to: https://www.arakala.net
+# 3. Never commit this file to Git (it contains secrets)
+# 4. Keep this file secure (permissions: chmod 600 .env)
+# 5. After editing, restart server: pm2 restart fami-backend
+# ========================================

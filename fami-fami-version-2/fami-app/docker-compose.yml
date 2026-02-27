@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # MongoDB Database (for local development only)
+  # Production uses MongoDB Atlas
+  mongodb:
+    image: mongo:6.0
+    container_name: fami-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: fami
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - fami-network
+    profiles:
+      - local-dev
+    labels:
+      - "com.docker.compose.project=fami-app"
+      - "description=Fami Family App - MongoDB Database (Local Dev Only)"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fami-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Production environment variables
+      NODE_ENV: production
+      PORT: 5000
+      # MongoDB Atlas (Production)
+      MONGODB_URI: ${MONGODB_URI}
+      # JWT Secrets
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_EXPIRE: 7d
+      # SendGrid Email
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL}
+      FROM_EMAIL: ${FROM_EMAIL}
+      # Production URLs
+      CLIENT_URL: ${CLIENT_URL:-http://fami-app.s3-website-us-east-1.amazonaws.com}
+      BASE_URL: ${BASE_URL:-https://api.fami.live}
+      # AWS S3
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-a-family-media}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      # LiveKit
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_URL: ${LIVEKIT_URL}
+    networks:
+      - fami-network
+    labels:
+      - "com.docker.compose.project=fami-app"
+      - "description=Fami Family App - Backend API"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend React App (for local testing only)
+  # Production uses S3 static hosting
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-https://api.fami.live/api}
+    container_name: fami-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - fami-network
+    profiles:
+      - local-dev
+    labels:
+      - "com.docker.compose.project=fami-app"
+      - "description=Fami Family App - Frontend (Local Dev Only)"
+
+networks:
+  fami-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local

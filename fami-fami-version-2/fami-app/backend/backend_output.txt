@@ -1,0 +1,24 @@
+🔌 Connecting to MongoDB...
+📍 Connection string: mongodb+srv://***:***@cluster0.rn8k391.mongodb.net/?appName=Cluster0
+✅ SendGrid API Key configured (starts with: SG.IB...)
+✅ FROM_EMAIL configured: noreply@acentle.com
+⚠️  AWS S3 not configured - Media will be stored locally
+💡 To enable S3 storage:
+   1. Set HARDCODED_S3_CONFIG in server/utils/s3Storage.js, OR
+   2. Add AWS_S3_BUCKET and AWS_REGION to .env file
+🔍 Google Drive Configuration Check:
+  GOOGLE_CLIENT_ID: ❌ Missing
+  GOOGLE_CLIENT_SECRET: ❌ Missing
+  Redirect URI: http://fami.live/auth/google/callback
+    (Auto-detected from CLIENT_URL)
+  Secret Valid: ❌ Invalid
+  Overall Status: ❌ NOT CONFIGURED
+ℹ️  Frontend build not found. Running in API-only mode.
+ℹ️  Frontend should be running separately (e.g., on port 3001)
+⏳ Waiting for MongoDB connection...
+✅ Mongoose connected to MongoDB
+✅ MongoDB Connected
+📊 Database: test
+📍 Host: ac-entb0d2-shard-00-01.rn8k391.mongodb.net
+🔌 Port: 27017
+✅ MongoDB ready, starting server...

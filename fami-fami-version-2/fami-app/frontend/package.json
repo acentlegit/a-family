@@ -1,0 +1,63 @@
+{
+  "name": "fami-client",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@livekit/components-react": "^2.7.4",
+    "@livekit/components-styles": "^1.2.0",
+    "@sendgrid/mail": "^8.1.6",
+    "@tanstack/react-query": "^5.90.19",
+    "@testing-library/dom": "^10.4.1",
+    "@types/file-saver": "^2.0.7",
+    "@types/react": "^19.2.8",
+    "@types/react-datepicker": "^6.2.0",
+    "@types/react-dom": "^19.2.3",
+    "axios": "^1.13.2",
+    "file-saver": "^2.0.5",
+    "livekit-client": "^2.9.1",
+    "react": "^19.2.3",
+    "react-datepicker": "^9.1.0",
+    "react-dom": "^19.2.3",
+    "react-dropzone": "^14.3.8",
+    "react-icons": "^5.3.0",
+    "react-router-dom": "^7.12.0",
+    "react-scripts": "5.0.1",
+    "recharts": "^3.6.0",
+    "socket.io-client": "^4.8.3",
+    "typescript": "^4.9.5",
+    "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5",
+    "yaml": "^2.8.2"
+  },
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "eject": "react-scripts eject",
+    "test": "craco test",
+    "test:coverage": "craco test --coverage --watchAll=false"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "@types/node": "^25.2.2",
+    "autoprefixer": "^10.4.24",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.19"
+  }
+}
