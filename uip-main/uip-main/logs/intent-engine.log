@@ -1,0 +1,749 @@
+{"level":30,"time":1768846811545,"pid":15948,"hostname":"Poojitha","msg":"Server listening at http://0.0.0.0:7001"}
+{"level":30,"time":1768846811546,"pid":15948,"hostname":"Poojitha","msg":"intent engine listening on 7001"}
+{"level":30,"time":1768846834301,"pid":15948,"hostname":"Poojitha","reqId":"req-1","req":{"method":"POST","url":"/v1/test-ollama","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":54682},"msg":"incoming request"}
+[Test] Testing Ollama with intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101
+[Ollama] ========================================
+[Ollama] Generating response for compliance engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 31519ms
+{"level":30,"time":1768846865834,"pid":15948,"hostname":"Poojitha","reqId":"req-1","res":{"statusCode":200},"responseTime":31531.69200003147,"msg":"request completed"}
+{"level":30,"time":1768846956643,"pid":15948,"hostname":"Poojitha","reqId":"req-2","req":{"method":"POST","url":"/v1/test-ollama","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":62537},"msg":"incoming request"}
+{"level":30,"time":1768846956648,"pid":15948,"hostname":"Poojitha","reqId":"req-2","res":{"statusCode":400},"err":{"type":"SyntaxError","message":"Expected property name or '}' in JSON at position 1 (line 1 column 2)","stack":"SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)","statusCode":400},"msg":"Expected property name or '}' in JSON at position 1 (line 1 column 2)"}
+{"level":30,"time":1768846956650,"pid":15948,"hostname":"Poojitha","reqId":"req-2","res":{"statusCode":400},"responseTime":5.9319000244140625,"msg":"request completed"}
+{"level":30,"time":1768847054596,"pid":15948,"hostname":"Poojitha","reqId":"req-3","req":{"method":"POST","url":"/v1/test-ollama","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":64185},"msg":"incoming request"}
+{"level":30,"time":1768847054596,"pid":15948,"hostname":"Poojitha","reqId":"req-3","res":{"statusCode":400},"err":{"type":"SyntaxError","message":"Expected property name or '}' in JSON at position 1 (line 1 column 2)","stack":"SyntaxError: Expected property name or '}' in JSON at position 1 (line 1 column 2)","statusCode":400},"msg":"Expected property name or '}' in JSON at position 1 (line 1 column 2)"}
+{"level":30,"time":1768847054597,"pid":15948,"hostname":"Poojitha","reqId":"req-3","res":{"statusCode":400},"responseTime":1.470300018787384,"msg":"request completed"}
+{"level":30,"time":1768847107558,"pid":15948,"hostname":"Poojitha","reqId":"req-4","req":{"method":"POST","url":"/v1/test-ollama","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":64280},"msg":"incoming request"}
+[Test] Testing Ollama with intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101
+[Ollama] ========================================
+[Ollama] Generating response for compliance engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 25456ms
+{"level":30,"time":1768847133018,"pid":15948,"hostname":"Poojitha","reqId":"req-4","res":{"statusCode":200},"responseTime":25459.759299993515,"msg":"request completed"}
+[Test] Testing Ollama with intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101
+[Ollama] ========================================
+[Ollama] Generating response for compliance engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+{"level":30,"time":1768847169914,"pid":15948,"hostname":"Poojitha","reqId":"req-5","req":{"method":"POST","url":"/v1/test-ollama","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":64393},"msg":"incoming request"}
+[Ollama] ⚠️ Slow response: 26092ms
+{"level":30,"time":1768847196007,"pid":15948,"hostname":"Poojitha","reqId":"req-5","res":{"statusCode":200},"responseTime":26093.57889997959,"msg":"request completed"}
+{"level":30,"time":1768847250013,"pid":15948,"hostname":"Poojitha","reqId":"req-6","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":64525},"msg":"incoming request"}
+[Ollama] ========================================
+[Ollama] Generating response for identity engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for tenancy engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 28288ms
+[Ollama] ⚠️ Slow response: 65266ms
+[Ollama] JSON parse failed for tenancy, using text extraction
+[Ollama] ✅ Using text-enhanced result for tenancy
+[Ollama] ========================================
+[Ollama] Generating response for compliance engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for policy engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Requirements definition
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for risk engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 69196ms
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 0)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:149:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for compliance - Ollama may not be running or responding
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 1)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:149:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for policy - Ollama may not be running or responding
+[Ollama] ========================================
+[Ollama] Generating response for quota engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Requirements definition
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for evidence engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 31811ms
+[Ollama] ⚠️ Slow response: 95229ms
+[Ollama] JSON parse failed for quota, using text extraction
+[Ollama] ✅ Using text-enhanced result for quota
+[Ollama] ========================================
+[Ollama] Generating response for routing engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code generation
+[Ollama] Category: Engineering & Technical
+[Ollama] ⚠️ Slow response: 27505ms
+[Ollama] ========================================
+[Ollama] Generating response for integration engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code generation
+[Ollama] Category: Engineering & Technical
+[Ollama] ========================================
+[Ollama] Generating response for pricing engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Prioritization
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for versioning engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code refactoring
+[Ollama] Category: Engineering & Technical
+[Ollama] ========================================
+[Ollama] Generating response for change engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for ai engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Feature ideation
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for simulation engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 34828ms
+[Ollama] ⚠️ Slow response: 73908ms
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 1)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for pricing - Ollama may not be running or responding
+[Orchestrator] Pricing: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 3)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for change - Ollama may not be running or responding
+[Orchestrator] Change: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 4)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for ai - Ollama may not be running or responding
+[Orchestrator] AI: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 5)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for simulation - Ollama may not be running or responding
+[Orchestrator] Simulation: Ollama enhancement failed
+[Ollama] ========================================
+[Ollama] Generating response for explainability engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Decision making
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 60976ms
+[Ollama] ========================================
+[Ollama] Generating response for learning engine
+[Ollama] Intent: I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: User research synthesis
+[Ollama] Category: Product Management
+[Ollama] ⚠️ Slow response: 49072ms
+[Ollama] ⚠️ Slow response: 39281ms
+[Ollama] ⚠️ Slow response: 93500ms
+Failed to parse action items JSON for intent: "I want to buy a property located at 1573 Westmoreland St, McLean, VA 22101"
+[Orchestrator] ========================================
+[Orchestrator] Final Engine Enhancement Status:
+  Compliance: ❌ Not enhanced
+  Policy: ❌ Not enhanced
+  Risk: ✅ Enhanced
+  Evidence: ✅ Enhanced
+  Explainability: ✅ Enhanced
+  Identity: ✅ Enhanced
+  Tenancy: ✅ Enhanced
+  Routing: ✅ Enhanced
+  Integration: ✅ Enhanced
+  Pricing: ❌ Not enhanced
+  Quota: ✅ Enhanced
+  Versioning: ✅ Enhanced
+  Change: ❌ Not enhanced
+  AI: ❌ Not enhanced
+  Simulation: ❌ Not enhanced
+  Appeals: ❌ Not enhanced
+  Learning: ✅ Enhanced
+  Action Items: 0 items generated
+[Orchestrator] ========================================
+{"level":30,"time":1768847921044,"pid":15948,"hostname":"Poojitha","reqId":"req-6","res":{"statusCode":200},"responseTime":671030.8835000396,"msg":"request completed"}
+{"level":30,"time":1768848813765,"pid":15948,"hostname":"Poojitha","reqId":"req-7","req":{"method":"OPTIONS","url":"/v1/execute","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":59587},"msg":"incoming request"}
+{"level":30,"time":1768848813769,"pid":15948,"hostname":"Poojitha","reqId":"req-7","res":{"statusCode":200},"responseTime":3.85589998960495,"msg":"request completed"}
+{"level":30,"time":1768848813771,"pid":15948,"hostname":"Poojitha","reqId":"req-8","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":59587},"msg":"incoming request"}
+[Ollama] ========================================
+[Ollama] Generating response for identity engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for tenancy engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 38274ms
+[Ollama] JSON parse failed for tenancy, using text extraction
+[Ollama] ✅ Using text-enhanced result for tenancy
+[Ollama] ⚠️ Slow response: 53199ms
+[Ollama] ========================================
+[Ollama] Generating response for compliance engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for policy engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Requirements definition
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for risk engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 58118ms
+[Ollama] ⚠️ Slow response: 114676ms
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 2)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:149:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for risk - Ollama may not be running or responding
+[Ollama] ========================================
+[Ollama] Generating response for quota engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Requirements definition
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for evidence engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 42875ms
+[Ollama] ⚠️ Slow response: 98653ms
+[Ollama] JSON parse failed for quota, using text extraction
+[Ollama] ✅ Using text-enhanced result for quota
+[Ollama] ========================================
+[Ollama] Generating response for routing engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code generation
+[Ollama] Category: Engineering & Technical
+[Ollama] ⚠️ Slow response: 33357ms
+[Ollama] ========================================
+[Ollama] Generating response for integration engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code generation
+[Ollama] Category: Engineering & Technical
+[Ollama] ========================================
+[Ollama] Generating response for pricing engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Prioritization
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for versioning engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code refactoring
+[Ollama] Category: Engineering & Technical
+[Ollama] ========================================
+[Ollama] Generating response for change engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for ai engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Feature ideation
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for simulation engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 5591ms
+{"level":30,"time":1768849153622,"pid":15948,"hostname":"Poojitha","reqId":"req-9","req":{"method":"OPTIONS","url":"/v1/execute","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":54146},"msg":"incoming request"}
+{"level":30,"time":1768849153626,"pid":15948,"hostname":"Poojitha","reqId":"req-9","res":{"statusCode":200},"responseTime":1.0677000284194946,"msg":"request completed"}
+{"level":30,"time":1768849153628,"pid":15948,"hostname":"Poojitha","reqId":"req-a","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7001","remoteAddress":"127.0.0.1","remotePort":54146},"msg":"incoming request"}
+[Ollama] ========================================
+[Ollama] Generating response for identity engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for tenancy engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Product Management
+[Ollama] ⚠️ Slow response: 63088ms
+[Ollama] JSON parse failed for ai, using text extraction
+[Ollama] Set AI advisory (106 chars) and 3 recommendations
+[Ollama] ✅ Using text-enhanced result for ai
+[Ollama] ⚠️ Slow response: 112268ms
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 1)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for pricing - Ollama may not be running or responding
+[Orchestrator] Pricing: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 2)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for versioning - Ollama may not be running or responding
+[Orchestrator] Versioning: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 3)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for change - Ollama may not be running or responding
+[Orchestrator] Change: Ollama enhancement failed
+[Ollama] ========================================
+[Ollama] Generating response for explainability engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Decision making
+[Ollama] Category: Executive & Strategy
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 0)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:100:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for identity - Ollama may not be running or responding
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 1)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:100:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for tenancy - Ollama may not be running or responding
+[Ollama] ========================================
+[Ollama] Generating response for compliance engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for policy engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Requirements definition
+[Ollama] Category: Executive & Strategy
+[Ollama] ========================================
+[Ollama] Generating response for risk engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Risk assessment
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 87272ms
+[Ollama] ========================================
+[Ollama] Generating response for learning engine
+[Ollama] Intent: I want to buy a house...
+[Ollama] Industry: real-estate
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: User research synthesis
+[Ollama] Category: Product Management
+[Ollama] ⚠️ Slow response: 86830ms
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 0)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:149:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for compliance - Ollama may not be running or responding
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 2)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:149:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for risk - Ollama may not be running or responding
+[Ollama] ========================================
+[Ollama] Generating response for quota engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Requirements definition
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for evidence engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Product Management
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:310:26)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for learning - Ollama may not be running or responding
+[Ollama] ⚠️ Slow response: 81313ms
+[Ollama] ⚠️ Slow response: 113935ms
+[Ollama] ========================================
+[Ollama] Generating response for routing engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code generation
+[Ollama] Category: Engineering & Technical
+[Ollama] ⚠️ Slow response: 103415ms
+[Ollama] ⚠️ Slow response: 85472ms
+[Ollama] ========================================
+[Ollama] Generating response for integration engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code generation
+[Ollama] Category: Engineering & Technical
+[Ollama] ========================================
+[Ollama] Generating response for pricing engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Prioritization
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for versioning engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Code refactoring
+[Ollama] Category: Engineering & Technical
+[Ollama] ========================================
+[Ollama] Generating response for change engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for ai engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Feature ideation
+[Ollama] Category: Product Management
+[Ollama] ========================================
+[Ollama] Generating response for simulation engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: I want to
+[Ollama] Category: Product Management
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateActionItems (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:1463:26)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:573:25)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Orchestrator] ========================================
+[Orchestrator] Final Engine Enhancement Status:
+  Compliance: ✅ Enhanced
+  Policy: ✅ Enhanced
+  Risk: ❌ Not enhanced
+  Evidence: ✅ Enhanced
+  Explainability: ✅ Enhanced
+  Identity: ✅ Enhanced
+  Tenancy: ✅ Enhanced
+  Routing: ✅ Enhanced
+  Integration: ✅ Enhanced
+  Pricing: ❌ Not enhanced
+  Quota: ✅ Enhanced
+  Versioning: ❌ Not enhanced
+  Change: ❌ Not enhanced
+  AI: ✅ Enhanced
+  Simulation: ✅ Enhanced
+  Appeals: ❌ Not enhanced
+  Learning: ❌ Not enhanced
+  Action Items: 0 items generated
+[Orchestrator] ========================================
+[Ollama] ⚠️ Slow response: 101653ms
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 1)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for pricing - Ollama may not be running or responding
+[Orchestrator] Pricing: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at runNextTicks (node:internal/process/task_queues:69:3)
+    at listOnTimeout (node:internal/timers:549:9)
+    at process.processTimers (node:internal/timers:523:7)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 2)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for versioning - Ollama may not be running or responding
+[Orchestrator] Versioning: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 3)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for change - Ollama may not be running or responding
+[Orchestrator] Change: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 4)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for ai - Ollama may not be running or responding
+[Orchestrator] AI: Ollama enhancement failed
+[Ollama] ❌ Error: The operation was aborted due to timeout
+[Ollama] Stack: TimeoutError: The operation was aborted due to timeout
+    at node:internal/deps/undici/undici:14900:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async callOllama (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:313:26)
+    at async generateEngineResponse (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\ollama-service.js:583:26)
+    at async Promise.allSettled (index 5)
+    at async orchestrateIntent (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\orchestrator.js:216:5)
+    at async execute (C:\MY APPLICATIONS\uip-main\uip-main\services\intent-engine\dist\handler.js:8:24)
+[Ollama] Empty response for simulation - Ollama may not be running or responding
+[Orchestrator] Simulation: Ollama enhancement failed
+[Ollama] ========================================
+[Ollama] Generating response for explainability engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: Decision making
+[Ollama] Category: Executive & Strategy
+[Ollama] ⚠️ Slow response: 39167ms
+[Ollama] ========================================
+[Ollama] Generating response for learning engine
+[Ollama] Intent: I want to travel to the goa...
+[Ollama] Industry: retail
+[Ollama] ========================================
+[Ollama] Extracted Intent Name: User research synthesis
+[Ollama] Category: Product Management
+[Ollama] ⚠️ Slow response: 34545ms
+[Ollama] ⚠️ Slow response: 30766ms
+[Ollama] ⚠️ Slow response: 65543ms
+[Action Items] Generated 2 actions for intent: "I want to travel to the goa"
+[Orchestrator] ========================================
+[Orchestrator] Final Engine Enhancement Status:
+  Compliance: ❌ Not enhanced
+  Policy: ✅ Enhanced
+  Risk: ❌ Not enhanced
+  Evidence: ✅ Enhanced
+  Explainability: ✅ Enhanced
+  Identity: ❌ Not enhanced
+  Tenancy: ❌ Not enhanced
+  Routing: ✅ Enhanced
+  Integration: ✅ Enhanced
+  Pricing: ❌ Not enhanced
+  Quota: ✅ Enhanced
+  Versioning: ❌ Not enhanced
+  Change: ❌ Not enhanced
+  AI: ❌ Not enhanced
+  Simulation: ❌ Not enhanced
+  Appeals: ❌ Not enhanced
+  Learning: ✅ Enhanced
+  Action Items: 2 items generated
+[Orchestrator] ========================================

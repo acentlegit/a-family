@@ -1,0 +1,21 @@
+{
+    "main": "src/server.ts",
+    "name": "@uip/auth",
+    "version": "1.0.0",
+    "scripts": {
+        "build": "tsc -p tsconfig.json"
+    },
+    "dependencies": {
+        "@fastify/cors": "^11.2.0",
+        "@types/bcryptjs": "^2.4.6",
+        "@types/jsonwebtoken": "^9.0.10",
+        "bcryptjs": "^3.0.3",
+        "fastify": "^4.29.1",
+        "jsonwebtoken": "^9.0.3",
+        "redis": "^5.10.0",
+        "uip-platform": "file:../.."
+    },
+    "devDependencies": {
+        "@types/redis": "^4.0.10"
+    }
+}

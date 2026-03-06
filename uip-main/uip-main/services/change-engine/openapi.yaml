@@ -1,0 +1,65 @@
+openapi: 3.1.0
+info:
+  title: Change & Governance Engine API
+  version: 1.0.0
+servers:
+  - url: http://localhost:7014
+security:
+  - bearerAuth: []
+  - mutualTLS: []
+
+paths:
+  /change/v1/health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+
+  /change/v1/execute:
+    post:
+      summary: Submit a governed system change
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeRequest"
+      responses:
+        "200":
+          description: Change decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChangeDecision"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    mutualTLS:
+      type: mutualTLS
+
+  schemas:
+    ChangeRequest:
+      type: object
+      properties:
+        changeId:
+          type: string
+        target:
+          type: string
+        proposedBy:
+          type: string
+        metadata:
+          type: object
+
+    ChangeDecision:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [APPROVED, DENIED, PENDING]
+        explanation:
+          type: string

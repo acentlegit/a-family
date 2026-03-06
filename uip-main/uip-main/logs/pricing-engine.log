@@ -1,0 +1,16 @@
+{"level":30,"time":1768833891269,"pid":26268,"hostname":"Poojitha","msg":"Server listening at http://0.0.0.0:7012"}
+{"level":30,"time":1768833891271,"pid":26268,"hostname":"Poojitha","msg":"pricing engine listening on 7012"}
+{"level":30,"time":1768834841955,"pid":26268,"hostname":"Poojitha","reqId":"req-1","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":51500},"msg":"incoming request"}
+{"level":30,"time":1768834841974,"pid":26268,"hostname":"Poojitha","reqId":"req-1","res":{"statusCode":200},"responseTime":17.409299969673157,"msg":"request completed"}
+{"level":30,"time":1768839498058,"pid":26268,"hostname":"Poojitha","reqId":"req-2","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":58298},"msg":"incoming request"}
+{"level":30,"time":1768839498066,"pid":26268,"hostname":"Poojitha","reqId":"req-2","res":{"statusCode":200},"responseTime":5.875899970531464,"msg":"request completed"}
+{"level":30,"time":1768845897522,"pid":26268,"hostname":"Poojitha","reqId":"req-3","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":53072},"msg":"incoming request"}
+{"level":30,"time":1768845897526,"pid":26268,"hostname":"Poojitha","reqId":"req-3","res":{"statusCode":200},"responseTime":2.552299976348877,"msg":"request completed"}
+{"level":30,"time":1768846272299,"pid":26268,"hostname":"Poojitha","reqId":"req-4","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":55028},"msg":"incoming request"}
+{"level":30,"time":1768846272303,"pid":26268,"hostname":"Poojitha","reqId":"req-4","res":{"statusCode":200},"responseTime":0.626300036907196,"msg":"request completed"}
+{"level":30,"time":1768847558132,"pid":26268,"hostname":"Poojitha","reqId":"req-5","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":59230},"msg":"incoming request"}
+{"level":30,"time":1768847558143,"pid":26268,"hostname":"Poojitha","reqId":"req-5","res":{"statusCode":200},"responseTime":10.342099964618683,"msg":"request completed"}
+{"level":30,"time":1768849119150,"pid":26268,"hostname":"Poojitha","reqId":"req-6","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":64685},"msg":"incoming request"}
+{"level":30,"time":1768849119154,"pid":26268,"hostname":"Poojitha","reqId":"req-6","res":{"statusCode":200},"responseTime":3.171299993991852,"msg":"request completed"}
+{"level":30,"time":1768849593318,"pid":26268,"hostname":"Poojitha","reqId":"req-7","req":{"method":"POST","url":"/v1/execute","hostname":"localhost:7012","remoteAddress":"127.0.0.1","remotePort":58564},"msg":"incoming request"}
+{"level":30,"time":1768849593328,"pid":26268,"hostname":"Poojitha","reqId":"req-7","res":{"statusCode":200},"responseTime":9.524399995803833,"msg":"request completed"}

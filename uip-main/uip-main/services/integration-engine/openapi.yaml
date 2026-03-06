@@ -1,0 +1,12 @@
+
+openapi: 3.1.0
+info:
+  title: Integration Engine API
+  version: 1.0.0
+paths:
+  /execute:
+    post:
+      summary: Execute integration engine
+      responses:
+        '200':
+          description: Engine result
