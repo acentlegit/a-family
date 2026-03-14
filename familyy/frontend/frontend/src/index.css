@@ -335,3 +335,76 @@ code {
 .lk-connection-quality.poor {
   background: #EF4444;
 }
+
+/* Mobile Responsive Utilities */
+@media (max-width: 768px) {
+  /* Hide on mobile, show on desktop */
+  .hide-mobile {
+    display: none !important;
+  }
+  
+  /* Show on mobile, hide on desktop */
+  .show-mobile {
+    display: block !important;
+  }
+  
+  /* Responsive text sizes */
+  .text-responsive {
+    font-size: 14px;
+  }
+  
+  /* Responsive padding */
+  .p-responsive {
+    padding: 1rem;
+  }
+  
+  /* Full width on mobile */
+  .w-full-mobile {
+    width: 100% !important;
+  }
+  
+  /* Stack on mobile */
+  .flex-col-mobile {
+    flex-direction: column !important;
+  }
+  
+  /* Grid responsive - 1 column on mobile */
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 769px) {
+  .hide-desktop {
+    display: none !important;
+  }
+  
+  .show-desktop {
+    display: block !important;
+  }
+  
+  .grid-responsive {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  }
+}
+
+/* Responsive container */
+.container-responsive {
+  width: 100%;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container-responsive {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-responsive {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}

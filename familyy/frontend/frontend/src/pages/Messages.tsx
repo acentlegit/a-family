@@ -89,6 +89,11 @@ const Messages: React.FC = () => {
 
     socket.on('connect_error', (error) => {
       console.error('Socket connection error:', error);
+      // Silently handle connection errors - will retry automatically
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket error:', error);
     });
 
     socket.on('message-received', (message) => {

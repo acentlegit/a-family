@@ -5,6 +5,7 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
 const sendEmail = require('../utils/email');
+const getClientUrl = require('../utils/getClientUrl');
 const crypto = require('crypto');
 
 // JWT Secret - REQUIRED in production
@@ -129,11 +130,49 @@ router.post('/register', [
 
     // Send welcome email
     try {
+      const clientUrl = getClientUrl();
+      // Add query parameter to indicate user came from email (so login page doesn't pre-fill default credentials)
+      const loginUrl = `${clientUrl}/login?from=email`;
+      
+      console.log('📧 Welcome email - Client URL:', clientUrl);
+      console.log('📧 Welcome email - Login URL:', loginUrl);
+      
+      const emailText = `Welcome to Fami, ${user.firstName}!
+
+Thank you for registering with Fami - Your Family Connection Platform.
+
+Your account has been successfully created with the following details:
+Name: ${user.firstName} ${user.lastName}
+Email: ${user.email}
+
+You can now:
+- Create or join families
+- Add family members
+- Share memories and photos
+- Organize family events
+- Connect with your loved ones
+
+Get started by logging in to your account and creating your first family!
+
+═══════════════════════════════════════════════════════════
+  LOGIN LINK - CLICK OR COPY THIS URL:
+═══════════════════════════════════════════════════════════
+
+${loginUrl}
+
+═══════════════════════════════════════════════════════════
+
+Click the link above or copy and paste it into your browser to login.
+
+Best regards,
+The Fami Team`;
+
       await sendEmail({
         to: user.email,
         subject: 'Welcome to Fami - Registration Successful!',
+        text: emailText,
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #6366f1;">Welcome to Fami, ${user.firstName}!</h2>
             <p>Thank you for registering with Fami - Your Family Connection Platform.</p>
             <p>Your account has been successfully created with the following details:</p>
@@ -149,7 +188,26 @@ router.post('/register', [
               <li>Organize family events</li>
               <li>Connect with your loved ones</li>
             </ul>
-            <p>Get started by logging in to your account and creating your first family!</p>
+            <p style="font-size: 18px; font-weight: 600; margin: 25px 0;"><strong>Get started by logging in to your account and creating your first family!</strong></p>
+            
+            <div style="text-align: center; margin: 35px 0; padding: 25px; background: #f0f4ff; border: 2px solid #6366f1; border-radius: 12px;">
+              <p style="margin: 0 0 15px 0; font-weight: 600; color: #1e40af; font-size: 16px;">Click here to login:</p>
+              <a href="${loginUrl}" style="display: inline-block; background: #6366f1; color: white !important; padding: 16px 40px; text-decoration: none !important; border-radius: 8px; font-weight: 700; font-size: 18px; margin: 10px 0;">Login to Your Account</a>
+            </div>
+            
+            <div style="text-align: center; margin: 25px 0; padding: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
+              <p style="margin: 0 0 10px 0; font-weight: 600; color: #856404; font-size: 16px;">Or copy this login link:</p>
+              <p style="margin: 0; padding: 12px; background: white; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 16px;">
+                <a href="${loginUrl}" style="color: #6366f1 !important; text-decoration: underline !important; font-weight: 600;">${loginUrl}</a>
+              </p>
+            </div>
+            
+            <p style="text-align: center; margin: 30px 0; padding: 15px; background: #e0f2fe; border-left: 4px solid #0284c7; font-size: 16px;">
+              <strong>Login URL:</strong><br>
+              <span style="font-family: monospace; color: #0284c7; font-weight: 600; font-size: 14px;">${loginUrl}</span>
+            </p>
+            
+            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px;">Click the button above or copy and paste the link into your browser to login.</p>
             <p style="margin-top: 30px;">Best regards,<br>The Fami Team</p>
           </div>
         `

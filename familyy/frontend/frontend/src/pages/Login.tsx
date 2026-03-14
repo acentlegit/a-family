@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../styles/colors';
 
@@ -8,13 +8,19 @@ const Login: React.FC = () => {
   const DEFAULT_USER_EMAIL = process.env.REACT_APP_DEFAULT_USER_EMAIL || 'arakala1926';
   const DEFAULT_USER_PASSWORD = process.env.REACT_APP_DEFAULT_USER_PASSWORD || 'a1926$2026';
   
-  const [email, setEmail] = useState(DEFAULT_USER_EMAIL); // Pre-fill default username
-  const [password, setPassword] = useState(DEFAULT_USER_PASSWORD); // Pre-fill default password
+  // Check if user came from email link (via query parameter or referrer)
+  const urlParams = new URLSearchParams(window.location.search);
+  const fromEmail = urlParams.get('from') === 'email' || document.referrer.includes('mail');
+  
+  // Only pre-fill default credentials if NOT coming from email
+  const [email, setEmail] = useState(fromEmail ? '' : DEFAULT_USER_EMAIL);
+  const [password, setPassword] = useState(fromEmail ? '' : DEFAULT_USER_PASSWORD);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDefaultUser, setIsDefaultUser] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Check if email matches default user
   useEffect(() => {
@@ -54,6 +60,13 @@ const Login: React.FC = () => {
     
     checkDefaultUser();
   }, [email, DEFAULT_USER_EMAIL]);
+
+  // Set browser history so back button goes to home page
+  useEffect(() => {
+    // Push home page to browser history stack
+    // This makes the back button go to home page instead of previous page
+    window.history.pushState({ page: 'home' }, '', '/');
+  }, []);
 
   // Redirect if already logged in (only check once on mount)
   useEffect(() => {
@@ -200,14 +213,7 @@ const Login: React.FC = () => {
       justifyContent: 'center',
       background: `linear-gradient(135deg, ${colors.sidebarGradientStart} 0%, ${colors.sidebarGradientEnd} 100%)`
     }}>
-      <div style={{
-        background: colors.cardBg,
-        padding: '40px',
-        borderRadius: '16px',
-        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-        width: '100%',
-        maxWidth: '450px'
-      }}>
+      <div className="bg-white p-6 md:p-10 rounded-2xl shadow-xl w-full max-w-[450px] mx-4">
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <div style={{ 
             fontSize: '48px', 

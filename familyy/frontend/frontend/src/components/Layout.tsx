@@ -168,33 +168,19 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
   };
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent', position: 'relative', zIndex: 1 }}>
+    <div className="flex min-h-screen bg-transparent relative z-10">
       <Sidebar selectedFamily={selectedFamily} />
       
-      <div style={{ marginLeft: '260px', flex: 1, width: 'calc(100% - 260px)' }}>
+      <div className="md:ml-[260px] flex-1 w-full md:w-[calc(100%-260px)]">
         {/* Top Header */}
-        <header style={{
-          height: '70px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 30px',
-          position: 'sticky',
-          top: 0,
-          zIndex: 100,
-          boxShadow: '0 2px 20px rgba(0, 0, 0, 0.1)'
-        }}>
+        <header className="h-[70px] bg-[rgba(255,255,255,0.1)] backdrop-blur-[20px] border-b border-[rgba(255,255,255,0.1)] flex items-center justify-between px-4 md:px-8 sticky top-0 z-[100] shadow-[0_2px_20px_rgba(0,0,0,0.1)]">
           <div>
-            <h1 style={{ fontSize: '24px', color: 'white', margin: 0, textShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+            <h1 className="text-lg md:text-2xl text-white m-0 drop-shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
               Dashboard
             </h1>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div className="flex items-center gap-3 md:gap-5">
             {/* Notifications */}
             <div style={{ position: 'relative' }} ref={notificationRef}>
               <button 
@@ -237,20 +223,7 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
 
               {/* Notifications Dropdown */}
               {showNotifications && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: '10px',
-                  background: colors.cardBg,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                  width: '380px',
-                  maxHeight: '500px',
-                  zIndex: 1000,
-                  overflow: 'hidden'
-                }}>
+                <div className="absolute top-full right-0 mt-2.5 bg-white border border-gray-200 rounded-xl shadow-xl w-[calc(100vw-2rem)] md:w-[380px] max-h-[500px] z-[1000] overflow-hidden">
                   {/* Header */}
                   <div style={{
                     padding: '16px 20px',
@@ -458,7 +431,7 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
                     <FaUser size={35} color={colors.primary} />
                   );
                 })()}
-                <span style={{ color: colors.body, fontWeight: '500' }}>
+                <span className="hidden md:inline text-gray-800 font-medium">
                   {user?.firstName} {user?.lastName}
                 </span>
               </button>
@@ -477,7 +450,13 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
                   zIndex: 1000
                 }}>
                   <button
-                    onClick={logout}
+                    onClick={() => {
+                      // Close menu immediately
+                      setShowUserMenu(false);
+                      // Logout and navigate
+                      logout();
+                      navigate('/', { replace: true });
+                    }}
                     style={{
                       width: '100%',
                       padding: '12px 16px',
@@ -486,7 +465,14 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
                       textAlign: 'left',
                       cursor: 'pointer',
                       color: colors.error,
-                      fontWeight: '500'
+                      fontWeight: '500',
+                      transition: 'background 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
                     }}
                   >
                     Logout
@@ -498,7 +484,7 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
         </header>
 
         {/* Main Content */}
-        <main style={{ padding: '30px' }}>
+        <main className="p-4 md:p-8">
           {children}
         </main>
       </div>

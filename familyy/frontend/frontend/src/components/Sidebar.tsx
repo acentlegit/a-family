@@ -18,9 +18,25 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed on mobile
   const [families, setFamilies] = useState<any[]>([]);
   const [showFamilies, setShowFamilies] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth <= 768;
+      setIsMobile(mobile);
+      if (!mobile) {
+        setIsCollapsed(false); // Always show on desktop
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Check on mount
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Memoize role checks to prevent re-renders
   const isSuperAdmin = useMemo(() => user?.role === 'SUPER_ADMIN' || user?.isSuperAdmin, [user?.role, user?.isSuperAdmin]);
@@ -64,30 +80,25 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
 
   return (
     <>
+      {/* Mobile Overlay */}
+      {!isCollapsed && (
+        <div
+          onClick={() => setIsCollapsed(true)}
+          className="fixed inset-0 bg-black bg-opacity-50 z-[999] md:hidden"
+        />
+      )}
+
       {/* Mobile Toggle */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{
-          position: 'fixed',
-          top: '20px',
-          left: '20px',
-          zIndex: 1001,
-          background: colors.primary,
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '10px',
-          cursor: 'pointer',
-          display: 'none'
-        }}
-        className="mobile-menu-toggle"
+        className="fixed top-5 left-5 z-[1001] bg-blue-600 text-white border-none rounded-lg p-2.5 cursor-pointer md:hidden"
       >
         {isCollapsed ? <FaBars size={20} /> : <FaTimes size={20} />}
       </button>
 
       <div
         style={{
-          width: isCollapsed ? '0' : '260px',
+          width: isMobile ? (isCollapsed ? '0' : '260px') : '260px',
           height: '100vh',
           background: 'rgba(0, 31, 63, 0.75)',
           backdropFilter: 'blur(20px)',
@@ -98,10 +109,12 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
           top: 0,
           overflowY: 'auto',
           overflowX: 'hidden',
-          transition: 'width 0.3s ease',
+          transition: 'transform 0.3s ease, width 0.3s ease',
           zIndex: 1000,
-          boxShadow: '2px 0 30px rgba(0,0,0,0.3)'
+          boxShadow: '2px 0 30px rgba(0,0,0,0.3)',
+          transform: isMobile && isCollapsed ? 'translateX(-100%)' : 'translateX(0)'
         }}
+        className="sidebar-container"
       >
         {/* Animated bubble overlay */}
         <div style={{
@@ -159,6 +172,11 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
                 <div key={item.path}>
                   <Link
                     to={item.path}
+                    onClick={() => {
+                      if (isMobile) {
+                        setIsCollapsed(true); // Close sidebar on mobile after navigation
+                      }
+                    }}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -221,6 +239,9 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
                           onClick={() => {
                             // Navigate to families page with family ID in state
                             navigate('/families', { state: { selectedFamilyId: family._id } });
+                            if (isMobile) {
+                              setIsCollapsed(true); // Close sidebar on mobile after navigation
+                            }
                           }}
                           style={{
                             display: 'flex',
@@ -274,6 +295,11 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => {
+                  if (isMobile) {
+                    setIsCollapsed(true); // Close sidebar on mobile after navigation
+                  }
+                }}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
@@ -466,13 +492,6 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
         </nav>
       </div>
 
-      <style>{`
-        @media (max-width: 768px) {
-          .mobile-menu-toggle {
-            display: block !important;
-          }
-        }
-      `}</style>
     </>
   );
 };
