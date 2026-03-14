@@ -16,7 +16,7 @@ if [ ! -f .env.production ]; then
     echo "📝 Creating .env.production file..."
     cat > .env.production << EOF
 # Production Environment Variables
-REACT_APP_API_BASE=http://34.204.50.125:5000/api
+REACT_APP_API_BASE=https://api.fami.live/api
 REACT_APP_CLIENT_URL=http://YOUR-S3-BUCKET-URL
 NODE_ENV=production
 EOF

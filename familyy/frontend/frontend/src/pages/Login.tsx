@@ -32,7 +32,14 @@ const Login: React.FC = () => {
       
       // Also check via API for flexibility
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE || 'https://api.fami.live/api'}/auth/check-default-user`, {
+        const apiBase = process.env.REACT_APP_API_BASE ? 
+          (process.env.REACT_APP_API_BASE.endsWith('/api') ? process.env.REACT_APP_API_BASE : `${process.env.REACT_APP_API_BASE}/api`) :
+          '';
+        if (!apiBase) {
+          console.error('❌ REACT_APP_API_BASE is not configured');
+          return;
+        }
+        const response = await fetch(`${apiBase}/auth/check-default-user`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })

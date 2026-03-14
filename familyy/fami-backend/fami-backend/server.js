@@ -56,14 +56,21 @@ const MONGODB_URI_FINAL = MONGODB_URI || "mongodb://localhost:27017/fami"; // On
    CLEAN PRODUCTION CORS
 ========================= */
 
-// Get allowed origins from environment or use defaults
-const CLIENT_URL = process.env.CLIENT_URL || "https://fami.live";
-const S3_BUCKET_URL = process.env.S3_BUCKET_URL || ""; // Add your S3 bucket URL here
+// Get allowed origins from environment - REQUIRED in production
+const CLIENT_URL = process.env.CLIENT_URL;
+const S3_BUCKET_URL = process.env.S3_BUCKET_URL || "";
+
+if (!CLIENT_URL && process.env.NODE_ENV === "production") {
+  console.error("❌ CLIENT_URL environment variable is required in production!");
+  process.exit(1);
+}
 
 const allowedOrigins = [
-  "https://arakala.net",
+  "https://www.fami.live",
   "https://fami.live",
   "http://fami.live",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
   CLIENT_URL,
   S3_BUCKET_URL
 ].filter(Boolean); // Remove empty strings
@@ -77,14 +84,19 @@ app.use((req, res, next) => {
     const origin = req.headers.origin;
     
     // Always set CORS headers for OPTIONS preflight requests
-    if (origin && allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-    } else if (origin && process.env.NODE_ENV === 'production') {
-      // In production, reject unknown origins
-      return res.status(403).json({ success: false, message: 'Origin not allowed' });
-    } else if (origin) {
-      // In development, allow any origin
-      res.setHeader('Access-Control-Allow-Origin', origin);
+    if (origin) {
+      // In development, allow localhost origins
+      if (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      } else if (allowedOrigins.includes(origin)) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      } else if (process.env.NODE_ENV === 'production') {
+        // In production, reject unknown origins
+        return res.status(403).json({ success: false, message: 'Origin not allowed' });
+      } else {
+        // In development, allow any origin
+        res.setHeader('Access-Control-Allow-Origin', origin);
+      }
     } else {
       res.setHeader('Access-Control-Allow-Origin', '*');
     }
@@ -148,12 +160,24 @@ app.use(cors({
       return callback(null, true);
     }
 
+    // In development, allow localhost origins
+    if (process.env.NODE_ENV !== 'production') {
+      if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
+        return callback(null, true);
+      }
+    }
+
     // Allow requests from allowed origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
     
     console.log("❌ CORS blocked:", origin);
+    // In development, still allow but log warning
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("⚠️  Allowing in development mode");
+      return callback(null, true);
+    }
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,

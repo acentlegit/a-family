@@ -19,19 +19,14 @@ const getClientUrl = () => {
   }
 
   if (process.env.NODE_ENV === "production") {
-    // Use production frontend domain
-    return "https://fami.live";
+    // Production requires CLIENT_URL environment variable
+    console.error("❌ CLIENT_URL environment variable is required in production!");
+    throw new Error("CLIENT_URL environment variable is required in production");
   }
 
   // Development fallback - only for local development
-  if (process.env.NODE_ENV !== "production") {
-    console.warn("⚠️  Using default localhost client URL for development");
-    return "http://localhost:3000";
-  }
-
-  // Production requires CLIENT_URL
-  console.warn("⚠️  CLIENT_URL not set, using production default");
-  return "https://fami.live";
+  console.warn("⚠️  Using default localhost client URL for development");
+  return "http://localhost:3000";
 };
 
 module.exports = getClientUrl;

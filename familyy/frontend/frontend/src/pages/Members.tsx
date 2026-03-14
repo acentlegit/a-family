@@ -22,6 +22,12 @@ const Members: React.FC = () => {
       lastName: '',
       email: '',
       relationship: 'Other',
+      generation: 0,
+      gender: 'Male',
+      spouseId: '',
+      relativeId: '', // Add relative selection
+      fatherId: '',
+      motherId: '',
       sendEmail: true
     }));
   };
@@ -38,16 +44,108 @@ const Members: React.FC = () => {
     generation: 0,
     fatherId: '',
     motherId: '',
-    spouseId: ''
+    spouseId: '',
+    relativeId: '' // Add relative selection
   });
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
 
   const relationshipOptions = [
-    'Father', 'Mother', 'Son', 'Daughter', 'Brother', 'Sister',
-    'Grandfather', 'Grandmother', 'Grandson', 'Granddaughter',
-    'Uncle', 'Aunt', 'Nephew', 'Niece', 'Cousin', 'Spouse', 'Other'
+    'Great Grandfather', 'Great Grandmother',
+    'Grandfather', 'Grandmother', 
+    'Father', 'Mother', 'Uncle', 'Aunt',
+    'Son', 'Daughter', 'Brother', 'Sister', 'Cousin',
+    'Grandson', 'Granddaughter',
+    'Nephew', 'Niece', 'Spouse', 'Other'
   ];
+
+  // Calculate generation based on relationship
+  // Generation 1: Great Grandfather/Great Grandmother (top)
+  // Generation 2: Grandfather/Grandmother
+  // Generation 3: Father/Mother/Uncle/Aunt
+  // Generation 4: Son/Daughter/Cousin
+  // Generation 5: Grandson/Granddaughter
+  const getGenerationFromRelationship = (relationship: string): number => {
+    const rel = relationship.toLowerCase().trim();
+    if (rel === 'great grandfather' || rel === 'great grandmother') {
+      return 1; // Top generation (great grandparents)
+    } else if (rel === 'grandfather' || rel === 'grandmother') {
+      return 2; // Grandparents generation
+    } else if (rel === 'father' || rel === 'mother' || rel === 'uncle' || rel === 'aunt') {
+      return 3; // Parents generation
+    } else if (rel === 'son' || rel === 'daughter' || rel === 'brother' || rel === 'sister' || 
+               rel === 'cousin' || rel === 'nephew' || rel === 'niece') {
+      return 4; // Children generation
+    } else if (rel === 'grandson' || rel === 'granddaughter') {
+      return 5; // Grandchildren generation
+    }
+    return 1; // Default for 'Other' or unknown (assume top generation)
+  };
+
+  // Find potential spouse when creating a member
+  const findPotentialSpouse = (relationship: string, gender: string, existingMembers: any[]): string => {
+    const rel = relationship.toLowerCase().trim();
+    const oppositeGender = gender === 'Male' ? 'Female' : 'Male';
+    
+    // Match Grandfather with Grandmother
+    if (rel === 'grandfather') {
+      const grandmother = existingMembers.find(m => 
+        m.relationship?.toLowerCase() === 'grandmother' && 
+        m.gender === oppositeGender && 
+        !m.spouse && 
+        m.generation === 0
+      );
+      return grandmother?._id || '';
+    } else if (rel === 'grandmother') {
+      const grandfather = existingMembers.find(m => 
+        m.relationship?.toLowerCase() === 'grandfather' && 
+        m.gender === oppositeGender && 
+        !m.spouse && 
+        m.generation === 0
+      );
+      return grandfather?._id || '';
+    }
+    
+    // Match Father with Mother
+    if (rel === 'father') {
+      const mother = existingMembers.find(m => 
+        m.relationship?.toLowerCase() === 'mother' && 
+        m.gender === oppositeGender && 
+        !m.spouse && 
+        m.generation === 1
+      );
+      return mother?._id || '';
+    } else if (rel === 'mother') {
+      const father = existingMembers.find(m => 
+        m.relationship?.toLowerCase() === 'father' && 
+        m.gender === oppositeGender && 
+        !m.spouse && 
+        m.generation === 1
+      );
+      return father?._id || '';
+    }
+    
+    // Match Uncle with Aunt
+    if (rel === 'uncle') {
+      const aunt = existingMembers.find(m => 
+        m.relationship?.toLowerCase() === 'aunt' && 
+        m.gender === oppositeGender && 
+        !m.spouse && 
+        m.generation === 1
+      );
+      return aunt?._id || '';
+    } else if (rel === 'aunt') {
+      const uncle = existingMembers.find(m => 
+        m.relationship?.toLowerCase() === 'uncle' && 
+        m.gender === oppositeGender && 
+        !m.spouse && 
+        m.generation === 1
+      );
+      return uncle?._id || '';
+    }
+    
+    return '';
+  };
 
   useEffect(() => {
     fetchFamilies();
@@ -141,10 +239,25 @@ const Members: React.FC = () => {
       return;
     }
 
-    // Filter out empty members and remove the internal 'id' field
+    // Filter out empty members, calculate generation if missing, and remove the internal 'id' field
     const validMembers = bulkMembers
       .filter(m => m.firstName.trim() && m.lastName.trim())
-      .map(({ id, ...member }) => member); // Remove 'id' field before sending
+      .map(({ id, ...member }) => {
+        // Ensure generation is set based on relationship if not already set
+        const generation = member.generation !== undefined 
+          ? member.generation 
+          : getGenerationFromRelationship(member.relationship || 'Other');
+        
+        return {
+          ...member,
+          generation: generation,
+          // Include spouseId if found
+          spouseId: member.spouseId || '',
+          // Include parent IDs if set from relative selection
+          fatherId: member.fatherId || '',
+          motherId: member.motherId || ''
+        };
+      }); // Remove 'id' field before sending
     
     if (validMembers.length === 0) {
       alert('Please add at least one member with first and last name');
@@ -230,7 +343,8 @@ const Members: React.FC = () => {
       generation: 0,
       fatherId: '',
       motherId: '',
-      spouseId: ''
+      spouseId: '',
+      relativeId: ''
     });
     setSelectedPhoto(null);
     setPhotoPreview('');
@@ -644,7 +758,7 @@ const Members: React.FC = () => {
                     <h4 style={{ margin: '0 0 16px 0', color: colors.title }}>
                       Member {index + 1}
                     </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '12px' }}>
                       <div>
                         <label style={{ display: 'block', color: colors.body, fontWeight: '500', marginBottom: '6px', fontSize: '13px' }}>
                           First Name {bulkMembers[index]?.firstName || bulkMembers[index]?.lastName ? '*' : '(optional)'}
@@ -742,16 +856,63 @@ const Members: React.FC = () => {
                       </div>
                       <div>
                         <label style={{ display: 'block', color: colors.body, fontWeight: '500', marginBottom: '6px', fontSize: '13px' }}>
+                          Gender
+                        </label>
+                        <select
+                          value={bulkMembers[index]?.gender || 'Male'}
+                          onChange={(e) => {
+                            const genderValue = e.target.value;
+                            const relationshipValue = bulkMembers[index]?.relationship || 'Other';
+                            const generation = getGenerationFromRelationship(relationshipValue);
+                            const potentialSpouseId = findPotentialSpouse(relationshipValue, genderValue, members);
+                            
+                            setBulkMembers((prevMembers) => {
+                              return prevMembers.map((m, i) => {
+                                if (i === index) {
+                                  return { 
+                                    ...m, 
+                                    gender: genderValue,
+                                    generation: generation,
+                                    spouseId: potentialSpouseId || m.spouseId || ''
+                                  };
+                                }
+                                return { ...m };
+                              });
+                            });
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', color: colors.body, fontWeight: '500', marginBottom: '6px', fontSize: '13px' }}>
                           Relationship
                         </label>
                         <select
                           value={bulkMembers[index]?.relationship || 'Other'}
                           onChange={(e) => {
                             const relationshipValue = e.target.value;
+                            const generation = getGenerationFromRelationship(relationshipValue);
+                            const memberGender = bulkMembers[index]?.gender || 'Male';
+                            const potentialSpouseId = findPotentialSpouse(relationshipValue, memberGender, members);
+                            
                             setBulkMembers((prevMembers) => {
                               return prevMembers.map((m, i) => {
                                 if (i === index) {
-                                  return { ...m, relationship: relationshipValue };
+                                  return { 
+                                    ...m, 
+                                    relationship: relationshipValue,
+                                    generation: generation,
+                                    spouseId: potentialSpouseId || m.spouseId || ''
+                                  };
                                 }
                                 return { ...m };
                               });
@@ -767,6 +928,108 @@ const Members: React.FC = () => {
                         >
                           {relationshipOptions.map(rel => (
                             <option key={rel} value={rel}>{rel}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', color: colors.body, fontWeight: '500', marginBottom: '6px', fontSize: '13px' }}>
+                          Select Relative
+                        </label>
+                        <select
+                          value={bulkMembers[index]?.relativeId || ''}
+                          onChange={(e) => {
+                            const relativeId = e.target.value;
+                            const relationshipValue = bulkMembers[index]?.relationship || 'Other';
+                            const memberGender = bulkMembers[index]?.gender || 'Male';
+                            
+                            // Find the selected relative
+                            const relative = members.find(m => m._id === relativeId);
+                            
+                            // Calculate relationships based on relationship type and relative
+                            let fatherId = '';
+                            let motherId = '';
+                            let spouseId = '';
+                            let generation = getGenerationFromRelationship(relationshipValue);
+                            
+                            if (relative && relationshipValue !== 'Other') {
+                              if (relationshipValue === 'Spouse') {
+                                spouseId = relativeId;
+                                generation = relative.generation || 0;
+                              } else if (relationshipValue === 'Father' || relationshipValue === 'Mother') {
+                                generation = (relative.generation || 0) - 1;
+                              } else if (relationshipValue === 'Grandfather' || relationshipValue === 'Grandmother') {
+                                generation = (relative.generation || 0) - 2;
+                              } else if (relationshipValue === 'Great Grandfather' || relationshipValue === 'Great Grandmother') {
+                                generation = (relative.generation || 0) - 3;
+                              } else if (relationshipValue === 'Son' || relationshipValue === 'Daughter') {
+                                generation = (relative.generation || 0) + 1;
+                                if (relative.gender === 'Male') {
+                                  fatherId = relativeId;
+                                  // Find spouse to set as mother
+                                  const spouse = members.find(m => m.spouse?._id === relativeId || m.spouse === relativeId);
+                                  if (spouse) motherId = spouse._id;
+                                } else {
+                                  motherId = relativeId;
+                                  // Find spouse to set as father
+                                  const spouse = members.find(m => m.spouse?._id === relativeId || m.spouse === relativeId);
+                                  if (spouse) fatherId = spouse._id;
+                                }
+                              } else if (relationshipValue === 'Brother' || relationshipValue === 'Sister') {
+                                generation = relative.generation || 0;
+                                // Find relative's parents
+                                if (relative.father?._id) fatherId = relative.father._id;
+                                if (relative.mother?._id) motherId = relative.mother._id;
+                              } else if (relationshipValue === 'Uncle' || relationshipValue === 'Aunt') {
+                                // Find relative's parents (grandparents)
+                                const relativeParents = members.filter(m => 
+                                  m._id === relative.father?._id || m._id === relative.mother?._id
+                                );
+                                if (relativeParents.length > 0) {
+                                  generation = relativeParents[0].generation || 0;
+                                  // Find grandparents of relative
+                                  const grandParent = relativeParents[0];
+                                  const grandParents = members.filter(m => 
+                                    m._id === grandParent.father?._id || m._id === grandParent.mother?._id
+                                  );
+                                  if (grandParents.length > 0) {
+                                    const maleGP = grandParents.find(p => p.gender === 'Male');
+                                    const femaleGP = grandParents.find(p => p.gender === 'Female');
+                                    if (maleGP) fatherId = maleGP._id;
+                                    if (femaleGP) motherId = femaleGP._id;
+                                  }
+                                }
+                              }
+                            }
+                            
+                            setBulkMembers((prevMembers) => {
+                              return prevMembers.map((m, i) => {
+                                if (i === index) {
+                                  return { 
+                                    ...m, 
+                                    relativeId: relativeId,
+                                    fatherId: fatherId || m.fatherId || '',
+                                    motherId: motherId || m.motherId || '',
+                                    spouseId: spouseId || m.spouseId || '',
+                                    generation: generation
+                                  };
+                                }
+                                return { ...m };
+                              });
+                            });
+                          }}
+                          style={{
+                            width: '100%',
+                            padding: '10px',
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          <option value="">Select a relative...</option>
+                          {members.map((member) => (
+                            <option key={member._id} value={member._id}>
+                              {member.firstName} {member.lastName} ({member.relationship})
+                            </option>
                           ))}
                         </select>
                       </div>

@@ -13,17 +13,38 @@ if (Test-Path "node_modules") {
 Write-Host "📥 Installing dependencies..." -ForegroundColor Yellow
 npm install
 
-# Step 3: Create production environment file if it doesn't exist
-if (-not (Test-Path ".env.production")) {
-    Write-Host "📝 Creating .env.production file..." -ForegroundColor Yellow
-    @"
+# Step 3: Create/Update production environment file
+Write-Host "📝 Creating/Updating .env.production file..." -ForegroundColor Yellow
+@"
 # Production Environment Variables
-REACT_APP_API_BASE=http://34.204.50.125:5000/api
-REACT_APP_CLIENT_URL=http://YOUR-S3-BUCKET-URL
+# Set REACT_APP_API_BASE and REACT_APP_CLIENT_URL environment variables before running this script
+# Or edit this file to set your production URLs
+REACT_APP_API_BASE=${env:REACT_APP_API_BASE}
+REACT_APP_CLIENT_URL=${env:REACT_APP_CLIENT_URL}
 NODE_ENV=production
-"@ | Out-File -FilePath ".env.production" -Encoding UTF8
-    Write-Host "⚠️  Please update .env.production with your actual S3 bucket URL" -ForegroundColor Yellow
+"@ | Out-File -FilePath ".env.production" -Encoding UTF8 -Force
+
+# Set defaults if not in environment
+if (-not $env:REACT_APP_API_BASE) {
+    $env:REACT_APP_API_BASE = "https://api.fami.live/api"
+    Write-Host "⚠️  Using default REACT_APP_API_BASE: https://api.fami.live/api" -ForegroundColor Yellow
 }
+if (-not $env:REACT_APP_CLIENT_URL) {
+    $env:REACT_APP_CLIENT_URL = "https://www.fami.live"
+    Write-Host "⚠️  Using default REACT_APP_CLIENT_URL: https://www.fami.live" -ForegroundColor Yellow
+}
+
+# Update .env.production with actual values
+@"
+# Production Environment Variables
+REACT_APP_API_BASE=$($env:REACT_APP_API_BASE)
+REACT_APP_CLIENT_URL=$($env:REACT_APP_CLIENT_URL)
+NODE_ENV=production
+"@ | Out-File -FilePath ".env.production" -Encoding UTF8 -Force
+
+Write-Host "✅ .env.production created/updated" -ForegroundColor Green
+Write-Host "   API Base: $($env:REACT_APP_API_BASE)" -ForegroundColor Cyan
+Write-Host "   Client URL: $($env:REACT_APP_CLIENT_URL)" -ForegroundColor Cyan
 
 # Step 4: Build production bundle
 Write-Host "🔨 Building production bundle..." -ForegroundColor Yellow

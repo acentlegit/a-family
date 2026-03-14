@@ -11,7 +11,7 @@ const memberSchema = new mongoose.Schema({
   dateOfBirth: { type: Date },
   relationship: { 
     type: String, 
-    enum: ['Father', 'Mother', 'Son', 'Daughter', 'Grandfather', 'Grandmother', 'Grandson', 'Granddaughter', 'Brother', 'Sister', 'Uncle', 'Aunt', 'Nephew', 'Niece', 'Cousin', 'Spouse', 'Other'],
+    enum: ['Great Grandfather', 'Great Grandmother', 'Grandfather', 'Grandmother', 'Father', 'Mother', 'Uncle', 'Aunt', 'Son', 'Daughter', 'Brother', 'Sister', 'Cousin', 'Grandson', 'Granddaughter', 'Nephew', 'Niece', 'Spouse', 'Other'],
     default: 'Other'
   },
   role: { type: String, enum: ['Admin', 'Member', 'Guest'], default: 'Member' },

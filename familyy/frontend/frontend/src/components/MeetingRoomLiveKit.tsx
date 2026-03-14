@@ -1102,7 +1102,15 @@ export default function MeetingRoomLiveKit({ roomName, displayName: _displayName
       return origin;
     }
     // Fallback for SSR or when window is not available
-    return process.env.REACT_APP_CLIENT_URL || 'https://fami.live';
+    if (process.env.REACT_APP_CLIENT_URL) {
+      return process.env.REACT_APP_CLIENT_URL;
+    }
+    // No hardcoded fallback - use window location if available
+    if (typeof window !== 'undefined' && window.location) {
+      return window.location.origin;
+    }
+    console.error('❌ REACT_APP_CLIENT_URL is not configured');
+    return '';
   };
 
   const baseUrl = getBaseUrl();

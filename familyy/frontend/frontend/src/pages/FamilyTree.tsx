@@ -4,6 +4,7 @@ import api, { getApiUrl } from '../config/api';
 import { FaDownload, FaUpload, FaTree } from 'react-icons/fa';
 import { FiFile } from 'react-icons/fi';
 import { colors } from '../styles/colors';
+import D3FamilyTree, { FamilyNode } from '../components/D3FamilyTree';
 import './FamilyTree.css';
 
 interface Person {
@@ -15,7 +16,10 @@ interface Person {
   avatar: string;
   photo: string | null;
   generation: number;
+  relationship?: string; // Relationship label like "Father", "Mother", "Grandfather", etc.
   _id?: string; // API ID
+  children?: string[]; // Array of child person IDs
+  spouse?: string; // Spouse person ID
 }
 
 interface Relationship {
@@ -45,6 +49,18 @@ const FamilyTree: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(1);
   const [showPersonModal, setShowPersonModal] = useState(false);
   const [modalPerson, setModalPerson] = useState<Person | null>(null);
+  const [d3TreeData, setD3TreeData] = useState<FamilyNode | null>(null);
+  const [resetTrigger, setResetTrigger] = useState(0);
+  
+  const relationshipOptions = [
+    'Root Person (Start Here)',
+    'Great Grandfather', 'Great Grandmother',
+    'Grandfather', 'Grandmother', 
+    'Father', 'Mother', 'Uncle', 'Aunt',
+    'Son', 'Daughter', 'Brother', 'Sister', 'Cousin',
+    'Grandson', 'Granddaughter',
+    'Nephew', 'Niece', 'Spouse', 'Other'
+  ];
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -52,7 +68,7 @@ const FamilyTree: React.FC = () => {
     email: '',
     gender: 'male' as 'male' | 'female',
     dateOfBirth: '',
-    relationshipType: 'root' as 'root' | 'parent' | 'spouse' | 'child',
+    relationshipType: 'Root Person (Start Here)',
     relativeId: ''
   });
 
@@ -133,6 +149,12 @@ const FamilyTree: React.FC = () => {
         dataLength: Array.isArray(response.data.data) ? response.data.data.length : 'N/A'
       });
       
+      // Log first member's full structure to see what fields are available
+      if (response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+        console.log('📋 First member structure:', response.data.data[0]);
+        console.log('📋 First member keys:', Object.keys(response.data.data[0]));
+      }
+      
       // Handle different response structures
       let members = [];
       if (response.data.success && response.data.data) {
@@ -180,9 +202,391 @@ const FamilyTree: React.FC = () => {
       return;
     }
 
+    // Infer relationships from member data if not explicitly set
+    // This handles cases where relationships aren't populated from API
+    const inferRelationships = (members: any[]): any[] => {
+      const relationshipMap: { [key: string]: any } = {};
+      const membersCopy = members.map(m => ({ ...m })); // Create a copy to avoid mutating original
+      
+      // First pass: categorize members by their relationship field and set generations
+      membersCopy.forEach(member => {
+        const relationship = (member.relationship || '').toLowerCase().trim();
+        const gender = (member.gender || '').toLowerCase();
+        
+        console.log(`🔍 Processing member ${member.firstName}: relationship="${relationship}", gender="${gender}"`);
+        
+        // Set generation based on relationship type
+        // Generation 1: Great Grandfather/Great Grandmother (top)
+        // Generation 2: Grandfather/Grandmother
+        // Generation 3: Father/Mother/Uncle/Aunt
+        // Generation 4: Son/Daughter/Cousin
+        // Generation 5: Grandson/Granddaughter
+        if (relationship === 'great grandfather' || relationship === 'great grandmother') {
+          member.generation = 1; // Top generation (great grandparents)
+          if (relationship === 'great grandfather') {
+            if (!relationshipMap['great_grandfathers']) relationshipMap['great_grandfathers'] = [];
+            relationshipMap['great_grandfathers'].push(member);
+          } else {
+            if (!relationshipMap['great_grandmothers']) relationshipMap['great_grandmothers'] = [];
+            relationshipMap['great_grandmothers'].push(member);
+          }
+        } else if (relationship === 'grandfather' || relationship === 'grandmother') {
+          member.generation = 2; // Grandparents generation
+          if (relationship === 'grandfather') {
+            if (!relationshipMap['grandfathers']) relationshipMap['grandfathers'] = [];
+            relationshipMap['grandfathers'].push(member);
+          } else {
+            if (!relationshipMap['grandmothers']) relationshipMap['grandmothers'] = [];
+            relationshipMap['grandmothers'].push(member);
+          }
+        } else if (relationship === 'father' || relationship === 'mother') {
+          member.generation = 3; // Parents generation
+          if (relationship === 'father') {
+            if (!relationshipMap['fathers']) relationshipMap['fathers'] = [];
+            relationshipMap['fathers'].push(member);
+          } else {
+            if (!relationshipMap['mothers']) relationshipMap['mothers'] = [];
+            relationshipMap['mothers'].push(member);
+          }
+        } else if (relationship === 'son' || relationship === 'daughter' || relationship === 'brother' || relationship === 'sister') {
+          member.generation = 4; // Children generation
+          if (relationship === 'son') {
+            if (!relationshipMap['sons']) relationshipMap['sons'] = [];
+            relationshipMap['sons'].push(member);
+          } else if (relationship === 'daughter') {
+            if (!relationshipMap['daughters']) relationshipMap['daughters'] = [];
+            relationshipMap['daughters'].push(member);
+          } else if (relationship === 'brother' || relationship === 'sister') {
+            if (!relationshipMap['siblings']) relationshipMap['siblings'] = [];
+            relationshipMap['siblings'].push(member);
+          }
+        } else if (relationship === 'grandson' || relationship === 'granddaughter') {
+          member.generation = 5; // Grandchildren generation
+          if (relationship === 'grandson') {
+            if (!relationshipMap['grandsons']) relationshipMap['grandsons'] = [];
+            relationshipMap['grandsons'].push(member);
+          } else {
+            if (!relationshipMap['granddaughters']) relationshipMap['granddaughters'] = [];
+            relationshipMap['granddaughters'].push(member);
+          }
+        } else if (relationship === 'uncle' || relationship === 'aunt') {
+          member.generation = 3; // Same as parents (siblings of parents)
+          if (!relationshipMap['uncles_aunts']) relationshipMap['uncles_aunts'] = [];
+          relationshipMap['uncles_aunts'].push(member);
+        } else if (relationship === 'cousin') {
+          member.generation = 4; // Same as children (children of uncles/aunts)
+          if (!relationshipMap['cousins']) relationshipMap['cousins'] = [];
+          relationshipMap['cousins'].push(member);
+        } else if (relationship === 'spouse' || relationship === 'wife' || relationship === 'husband') {
+          // Spouse generation will be set based on their partner
+          if (!relationshipMap['spouses']) relationshipMap['spouses'] = [];
+          relationshipMap['spouses'].push(member);
+        } else if (relationship === 'nephew' || relationship === 'niece') {
+          member.generation = 4; // Same as children
+          if (!relationshipMap['nephews_nieces']) relationshipMap['nephews_nieces'] = [];
+          relationshipMap['nephews_nieces'].push(member);
+        } else if (relationship === 'other' || !relationship) {
+          // Members with "Other" or no relationship - keep existing generation or infer
+          if (!relationshipMap['others']) relationshipMap['others'] = [];
+          relationshipMap['others'].push(member);
+        }
+      });
+      
+      console.log('📊 Relationship categories:', {
+        fathers: relationshipMap['fathers']?.length || 0,
+        mothers: relationshipMap['mothers']?.length || 0,
+        sons: relationshipMap['sons']?.length || 0,
+        daughters: relationshipMap['daughters']?.length || 0,
+        siblings: relationshipMap['siblings']?.length || 0,
+        spouses: relationshipMap['spouses']?.length || 0,
+        extended: relationshipMap['extended']?.length || 0,
+        others: relationshipMap['others']?.length || 0
+      });
+      
+      // Find couples at each generation level
+      // 1. Great Grandparents (Great Grandfather + Great Grandmother) - generation 1
+      // Match ALL great grandfathers with great grandmothers by last name
+      if (relationshipMap['great_grandfathers'] && relationshipMap['great_grandmothers']) {
+        const greatGrandfathers = relationshipMap['great_grandfathers'];
+        const greatGrandmothers = relationshipMap['great_grandmothers'];
+        
+        // Match great grandfathers with great grandmothers by last name
+        // This handles multiple great grandparent pairs (e.g., Krishna A/Lakshmi A and Rama B/Sita B)
+        greatGrandfathers.forEach((greatGrandFather: any) => {
+          if (!greatGrandFather.spouse) { // Only match if not already matched
+            const greatGrandFatherLastName = (greatGrandFather.lastName || '').trim();
+            
+            // Find matching great grandmother with same last name
+            const matchingGreatGrandMother = greatGrandmothers.find((ggm: any) => 
+              !ggm.spouse && // Not already matched
+              (ggm.lastName || '').trim() === greatGrandFatherLastName && // Same last name
+              greatGrandFatherLastName !== '' // Last name must not be empty
+            );
+            
+            if (matchingGreatGrandMother) {
+              // Set spouse relationship
+              greatGrandFather.spouse = matchingGreatGrandMother._id;
+              matchingGreatGrandMother.spouse = greatGrandFather._id;
+              console.log(`✅ Matched great grandparents by last name: ${greatGrandFather.firstName} ${greatGrandFather.lastName} <-> ${matchingGreatGrandMother.firstName} ${matchingGreatGrandMother.lastName}`);
+            } else {
+              // If no match by last name, try matching with any unmatched great grandmother
+              // But only if there's exactly one unmatched great grandmother
+              const unmatchedGreatGrandmothers = greatGrandmothers.filter((ggm: any) => !ggm.spouse);
+              if (unmatchedGreatGrandmothers.length === 1 && greatGrandfathers.length === 1) {
+                const greatGrandMother = unmatchedGreatGrandmothers[0];
+                greatGrandFather.spouse = greatGrandMother._id;
+                greatGrandMother.spouse = greatGrandFather._id;
+                console.log(`✅ Matched great grandparents (only pair): ${greatGrandFather.firstName} <-> ${greatGrandMother.firstName}`);
+              }
+            }
+          }
+        });
+      }
+      
+      // 2. Grandparents (Grandfather + Grandmother) - generation 2
+      // Match ALL grandfathers with grandmothers by last name
+      if (relationshipMap['grandfathers'] && relationshipMap['grandmothers']) {
+        const grandfathers = relationshipMap['grandfathers'];
+        const grandmothers = relationshipMap['grandmothers'];
+        
+        // Match grandfathers with grandmothers by last name
+        grandfathers.forEach((grandFather: any) => {
+          if (!grandFather.spouse) { // Only match if not already matched
+            const grandFatherLastName = (grandFather.lastName || '').trim();
+            
+            // Find matching grandmother with same last name
+            const matchingGrandMother = grandmothers.find((gm: any) => 
+              !gm.spouse && // Not already matched
+              (gm.lastName || '').trim() === grandFatherLastName && // Same last name
+              grandFatherLastName !== '' // Last name must not be empty
+            );
+            
+            if (matchingGrandMother) {
+              // Set spouse relationship
+              grandFather.spouse = matchingGrandMother._id;
+              matchingGrandMother.spouse = grandFather._id;
+              console.log(`✅ Matched grandparents by last name: ${grandFather.firstName} ${grandFather.lastName} <-> ${matchingGrandMother.firstName} ${matchingGrandMother.lastName}`);
+            } else {
+              // If no match by last name, try matching with any unmatched grandmother
+              // But only if there's exactly one unmatched grandmother
+              const unmatchedGrandmothers = grandmothers.filter((gm: any) => !gm.spouse);
+              if (unmatchedGrandmothers.length === 1 && grandfathers.length === 1) {
+                const grandMother = unmatchedGrandmothers[0];
+                grandFather.spouse = grandMother._id;
+                grandMother.spouse = grandFather._id;
+                console.log(`✅ Matched grandparents (only pair): ${grandFather.firstName} <-> ${grandMother.firstName}`);
+              }
+            }
+          }
+        });
+      }
+      
+      // 3. Parents (Father + Mother) - generation 3
+      let primaryFather = null;
+      let primaryMother = null;
+      if (relationshipMap['fathers'] && relationshipMap['mothers']) {
+        const fathers = relationshipMap['fathers'];
+        const mothers = relationshipMap['mothers'];
+        
+        // Match father and mother (they should be spouses)
+        if (fathers.length > 0 && mothers.length > 0) {
+          primaryFather = fathers[0];
+          primaryMother = mothers[0];
+          // Set spouse relationship
+          primaryFather.spouse = primaryMother._id;
+          primaryMother.spouse = primaryFather._id;
+          console.log(`✅ Matched parents: ${primaryFather.firstName} <-> ${primaryMother.firstName}`);
+          
+          // Set grandparents as parents of parents
+          // Find matched grandparents from relationshipMap
+          const grandfathers = relationshipMap['grandfathers'] || [];
+          const grandmothers = relationshipMap['grandmothers'] || [];
+          const matchedGrandFather = grandfathers.find((gf: any) => gf.spouse);
+          const matchedGrandMother = matchedGrandFather ? grandmothers.find((gm: any) => gm._id === matchedGrandFather.spouse) : null;
+          
+          if (matchedGrandFather && matchedGrandMother) {
+            primaryFather.father = matchedGrandFather._id;
+            primaryFather.mother = matchedGrandMother._id;
+            primaryMother.father = matchedGrandFather._id;
+            primaryMother.mother = matchedGrandMother._id;
+            console.log(`✅ Set ${matchedGrandFather.firstName} and ${matchedGrandMother.firstName} as parents of ${primaryFather.firstName} and ${primaryMother.firstName}`);
+          }
+        }
+      }
+      
+      // 3. Uncles/Aunts - match them as couples and set grandparents as parents
+      const unclesAunts = relationshipMap['uncles_aunts'] || [];
+      // Find matched grandparents from relationshipMap
+      const grandfathers = relationshipMap['grandfathers'] || [];
+      const grandmothers = relationshipMap['grandmothers'] || [];
+      const matchedGrandFather = grandfathers.find((gf: any) => gf.spouse);
+      const matchedGrandMother = matchedGrandFather ? grandmothers.find((gm: any) => gm._id === matchedGrandFather.spouse) : null;
+      
+      unclesAunts.forEach((member: any) => {
+        // Set grandparents as parents of uncles/aunts
+        if (matchedGrandFather && matchedGrandMother && !member.father && !member.mother) {
+          member.father = matchedGrandFather._id;
+          member.mother = matchedGrandMother._id;
+          console.log(`✅ Set ${matchedGrandFather.firstName} and ${matchedGrandMother.firstName} as parents of ${member.firstName} (${member.relationship})`);
+        }
+      });
+      
+      // Match uncles with aunts (opposite gender, same generation)
+      unclesAunts.forEach((member: any) => {
+        if (!member.spouse) {
+          const partner = unclesAunts.find((m: any) => 
+            m._id !== member._id &&
+            ((member.relationship?.toLowerCase() === 'uncle' && m.relationship?.toLowerCase() === 'aunt') ||
+             (member.relationship?.toLowerCase() === 'aunt' && m.relationship?.toLowerCase() === 'uncle')) &&
+            m.generation === member.generation &&
+            !m.spouse
+          );
+          if (partner) {
+            member.spouse = partner._id;
+            partner.spouse = member._id;
+            console.log(`✅ Matched uncle/aunt couple: ${member.firstName} <-> ${partner.firstName}`);
+          }
+        }
+      });
+      
+      // 5. Set parent-child relationships
+      if (primaryFather && primaryMother) {
+        // Set parent-child relationships for direct children (sons and daughters)
+        const children = [...(relationshipMap['sons'] || []), ...(relationshipMap['daughters'] || [])];
+        children.forEach(child => {
+          // Only set if child doesn't already have parents
+          if (!child.father && !child.mother) {
+            child.father = primaryFather._id;
+            child.mother = primaryMother._id;
+          }
+        });
+        
+        console.log('✅ Set parent-child relationships:', {
+          parents: `${primaryFather.firstName} - ${primaryMother.firstName}`,
+          children: children.map(c => c.firstName)
+        });
+      }
+      
+      // Set cousins as children of uncles/aunts
+      const cousins = relationshipMap['cousins'] || [];
+      unclesAunts.forEach((uncleAunt: any) => {
+        // Find spouse of uncle/aunt
+        const spouseId = uncleAunt.spouse;
+        if (spouseId) {
+          const spouse = unclesAunts.find((m: any) => m._id === spouseId);
+          if (spouse) {
+            // Assign some cousins to this uncle/aunt couple
+            const coupleCousins = cousins.filter((c: any) => !c.father && !c.mother).slice(0, 3);
+            coupleCousins.forEach((cousin: any) => {
+              cousin.father = uncleAunt._id;
+              cousin.mother = spouseId;
+            });
+          }
+        }
+      });
+      
+      // 5. Set grandchildren as children of their parents (sons/daughters)
+      const grandsons = relationshipMap['grandsons'] || [];
+      const granddaughters = relationshipMap['granddaughters'] || [];
+      const grandchildren = [...grandsons, ...granddaughters];
+      
+      // Get all children (sons and daughters) who could be parents of grandchildren
+      const potentialParents = [...(relationshipMap['sons'] || []), ...(relationshipMap['daughters'] || [])];
+      
+      // For each grandchild, try to find a parent couple
+      // Grandchildren are children of the children generation (generation 2)
+      grandchildren.forEach((grandchild: any) => {
+        if (!grandchild.father && !grandchild.mother) {
+          // Try to find a parent couple from the children generation
+          // Look for a son or daughter who could be the parent
+          // For now, assign to first available parent couple if any
+          if (primaryFather && primaryMother) {
+            // Get children of primary couple
+            const childrenOfPrimary = [...(relationshipMap['sons'] || []), ...(relationshipMap['daughters'] || [])];
+            if (childrenOfPrimary.length > 0) {
+              // Assign grandchild to first child (could be improved with better logic)
+              const parentChild = childrenOfPrimary[0];
+              // Check if parent child has a spouse
+              const parentSpouseId = parentChild.spouse;
+              if (parentSpouseId) {
+                const parentSpouse = potentialParents.find((p: any) => p._id === parentSpouseId);
+                if (parentSpouse) {
+                  grandchild.father = parentChild._id;
+                  grandchild.mother = parentSpouseId;
+                  console.log(`✅ Set ${parentChild.firstName} and ${parentSpouse.firstName} as parents of ${grandchild.firstName} (grandchild)`);
+                }
+              } else {
+                // Single parent
+                grandchild.father = parentChild._id;
+                console.log(`✅ Set ${parentChild.firstName} as parent of ${grandchild.firstName} (grandchild)`);
+              }
+            }
+          }
+        }
+      });
+      
+      // Handle siblings - siblings are children of the same parents
+      if (primaryFather && primaryMother) {
+        const children = [...(relationshipMap['sons'] || []), ...(relationshipMap['daughters'] || [])];
+        const siblings = relationshipMap['siblings'] || [];
+        
+        // Add siblings as children of the primary couple if they don't have parents
+        siblings.forEach(sibling => {
+          if (!sibling.father && !sibling.mother) {
+            sibling.father = primaryFather._id;
+            sibling.mother = primaryMother._id;
+            console.log(`✅ Added sibling ${sibling.firstName} as child of ${primaryFather.firstName} and ${primaryMother.firstName}`);
+          }
+        });
+        
+        // Also check "others" - if they have same generation as children, they might be siblings
+        const others = relationshipMap['others'] || [];
+        const childrenGen = children.length > 0 ? children[0].generation : null;
+        others.forEach(other => {
+          // If same generation as children and no parents, treat as sibling/child
+          if ((!other.father && !other.mother) && 
+              (childrenGen === null || other.generation === childrenGen || other.generation === childrenGen + 1)) {
+            other.father = primaryFather._id;
+            other.mother = primaryMother._id;
+            console.log(`✅ Added "other" member ${other.firstName} as child of primary couple`);
+          }
+        });
+      }
+      
+      // Handle spouses - match spouses to their partners
+      const spouses = relationshipMap['spouses'] || [];
+      spouses.forEach(spouse => {
+        // Try to find a matching partner (opposite gender, same generation)
+        const spouseGender = (spouse.gender || '').toLowerCase();
+        const spouseGen = spouse.generation || 0;
+        
+        const potentialPartners = membersCopy.filter(m => {
+          const mGender = (m.gender || '').toLowerCase();
+          const mGen = m.generation || 0;
+          return m._id !== spouse._id && 
+                 mGender !== spouseGender && 
+                 mGen === spouseGen &&
+                 !m.spouse; // Not already married
+        });
+        
+        if (potentialPartners.length > 0) {
+          // Match with first potential partner
+          const partner = potentialPartners[0];
+          spouse.spouse = partner._id;
+          partner.spouse = spouse._id;
+          console.log(`✅ Matched spouses: ${spouse.firstName} <-> ${partner.firstName}`);
+        }
+      });
+      
+      return membersCopy;
+    };
+    
+    // Infer relationships if needed
+    const membersWithInferredRelationships = inferRelationships(members);
+
     // Include ALL members in the tree - don't filter them out
     // This ensures all added members are visible, even if they don't have relationships yet
-    const membersWithRelationships = members.filter((member) => {
+    const membersToProcess = membersWithInferredRelationships.filter((member) => {
       // Include all members - they can be connected later or displayed as separate trees
       console.log('✅ Including member:', member.firstName, member.lastName, {
         hasFather: !!(member.father?._id || member.father),
@@ -194,11 +598,11 @@ const FamilyTree: React.FC = () => {
       return true; // Include all members
     });
 
-    console.log(`Including all ${membersWithRelationships.length} members in the tree`);
+    console.log(`Including all ${membersToProcess.length} members in the tree`);
 
     // Deduplicate members by ID to prevent duplicates
     const uniqueMembers = new Map();
-    membersWithRelationships.forEach((member) => {
+    membersToProcess.forEach((member) => {
       const memberId = member._id?.toString() || member.id?.toString();
       if (memberId && !uniqueMembers.has(memberId)) {
         uniqueMembers.set(memberId, member);
@@ -207,7 +611,7 @@ const FamilyTree: React.FC = () => {
       }
     });
     
-    console.log(`Deduplicated ${membersWithRelationships.length} members to ${uniqueMembers.size} unique members`);
+    console.log(`Deduplicated ${membersToProcess.length} members to ${uniqueMembers.size} unique members`);
 
     // Convert API members to Person objects
     Array.from(uniqueMembers.values()).forEach((member) => {
@@ -271,70 +675,150 @@ const FamilyTree: React.FC = () => {
           avatar,
           photo: photoUrl,
           generation: member.generation || 1,
-          _id: member._id
+          relationship: member.relationship || undefined,
+          _id: member._id,
+          children: [] // Initialize children array
         };
       } else {
         console.warn('⚠️ Skipping duplicate person:', member.firstName, member.lastName, 'ID:', personId);
         return; // Skip processing this duplicate member
       }
 
-      // Set root person (lowest generation, prefer generation 0)
-      // Only update root if:
-      // 1. No root exists yet, OR
-      // 2. Current member has generation 0 and existing root doesn't, OR
-      // 3. Current member has lower generation than existing root
+      // Set root person (prefer Father/Mother couple, then lowest generation)
+      // Check if this member is a Father or Mother (they should be root)
+      const relationship = (member.relationship || '').toLowerCase().trim();
+      const isParent = relationship === 'father' || relationship === 'mother';
+      
       if (!rootPersonId) {
         rootPersonId = personId;
       } else {
-        const currentRootGen = people[rootPersonId]?.generation || 999;
+        const currentRoot = people[rootPersonId];
+        const currentRootRel = (currentRoot?.generation !== undefined ? '' : ''); // We don't have relationship in Person, check member
+        const currentRootGen = currentRoot?.generation || 999;
         const memberGen = member.generation || 1;
-        // Prefer generation 0 as root, otherwise lowest generation
-        if (memberGen === 0 && currentRootGen !== 0) {
+        
+        // Prefer Father/Mother as root
+        if (isParent && (!currentRoot || currentRootGen >= memberGen)) {
           rootPersonId = personId;
-        } else if (memberGen < currentRootGen && currentRootGen !== 0) {
+        } else if (!isParent && currentRootGen !== 0 && memberGen === 0) {
+          // Prefer generation 0
+          rootPersonId = personId;
+        } else if (memberGen < currentRootGen && currentRootGen !== 0 && !isParent) {
+          // Lower generation, but only if current root is not a parent
           rootPersonId = personId;
         }
       }
     });
 
     // Build relationships from member data (only for unique members with relationships)
+    console.log('🔗 Starting to build relationships from', uniqueMembers.size, 'members');
     Array.from(uniqueMembers.values()).forEach((member) => {
-      console.log(`Building relationships for ${member.firstName}:`, {
+      // Try multiple ways to get relationship IDs
+      const fatherId = member.father?._id || member.father || member.fatherId || null;
+      const motherId = member.mother?._id || member.mother || member.motherId || null;
+      const spouseId = member.spouse?._id || member.spouse || member.spouseId || null;
+      
+      console.log(`🔗 Building relationships for ${member.firstName} (ID: ${member._id}):`, {
         father: member.father,
         mother: member.mother,
         spouse: member.spouse,
-        fatherId: member.father?._id || member.father,
-        motherId: member.mother?._id || member.mother,
-        spouseId: member.spouse?._id || member.spouse
+        fatherId,
+        motherId,
+        spouseId,
+        fatherExists: fatherId ? !!people[fatherId] : false,
+        motherExists: motherId ? !!people[motherId] : false,
+        spouseExists: spouseId ? !!people[spouseId] : false,
+        allPeopleIds: Object.keys(people)
       });
       
       // Handle father relationship - can be populated object or just ID
-      const fatherId = member.father?._id || member.father || null;
-      if (fatherId && people[fatherId]) {
+      if (fatherId) {
+        if (people[fatherId]) {
+          // IMPORTANT: Don't create parent-child if this is actually a spouse relationship
+          if (spouseId !== fatherId) {
         relationships.push({
           id: `rel_${member._id}_father_${fatherId}`,
           person1Id: fatherId,
           person2Id: member._id,
           type: 'parent-child'
         });
-        console.log(`Added father relationship: ${fatherId} -> ${member._id}`);
+            // Add child to father's children array
+            if (!people[fatherId].children) {
+              people[fatherId].children = [];
+            }
+            if (!people[fatherId].children.includes(member._id)) {
+              people[fatherId].children.push(member._id);
+            }
+            console.log(`✅ Added father relationship: ${people[fatherId]?.firstName} -> ${member.firstName}`);
+          } else {
+            console.log(`⚠️ Skipping father relationship - ${fatherId} is spouse of ${member._id}`);
+          }
+        } else {
+          console.log(`⚠️ Father ${fatherId} not found in people object. Available IDs:`, Object.keys(people));
+        }
+      } else {
+        console.log(`ℹ️ No father for ${member.firstName}`);
       }
       
       // Handle mother relationship - can be populated object or just ID
-      const motherId = member.mother?._id || member.mother || null;
-      if (motherId && people[motherId]) {
+      if (motherId) {
+        if (people[motherId]) {
+          // IMPORTANT: Don't create parent-child if this is actually a spouse relationship
+          if (spouseId !== motherId) {
         relationships.push({
           id: `rel_${member._id}_mother_${motherId}`,
           person1Id: motherId,
           person2Id: member._id,
           type: 'parent-child'
         });
-        console.log(`Added mother relationship: ${motherId} -> ${member._id}`);
+            // Add child to mother's children array
+            if (!people[motherId].children) {
+              people[motherId].children = [];
+            }
+            if (!people[motherId].children.includes(member._id)) {
+              people[motherId].children.push(member._id);
+            }
+            console.log(`✅ Added mother relationship: ${people[motherId]?.firstName} -> ${member.firstName}`);
+          } else {
+            console.log(`⚠️ Skipping mother relationship - ${motherId} is spouse of ${member._id}`);
+          }
+        } else {
+          console.log(`⚠️ Mother ${motherId} not found in people object. Available IDs:`, Object.keys(people));
+        }
+      } else {
+        console.log(`ℹ️ No mother for ${member.firstName}`);
+      }
+      
+      // If member has both father and mother, they should be spouses
+      // This is CRITICAL - ensure father and mother are always spouses
+      if (fatherId && motherId && people[fatherId] && people[motherId]) {
+        const existingSpouseRel = relationships.find(r => 
+          r.type === 'spouse' && 
+          ((r.person1Id === fatherId && r.person2Id === motherId) ||
+           (r.person1Id === motherId && r.person2Id === fatherId))
+        );
+        if (!existingSpouseRel) {
+          relationships.push({
+            id: `rel_${fatherId}_spouse_${motherId}_auto`,
+            person1Id: fatherId,
+            person2Id: motherId,
+            type: 'spouse'
+          });
+          // Set spouse property on both Person objects
+          people[fatherId].spouse = motherId;
+          people[motherId].spouse = fatherId;
+          console.log(`✅ Auto-added spouse relationship (from parents): ${people[fatherId].firstName} <-> ${people[motherId].firstName}`);
+        } else {
+          // Still set spouse property even if relationship already exists
+          people[fatherId].spouse = motherId;
+          people[motherId].spouse = fatherId;
+          console.log(`✅ Spouse relationship already exists: ${people[fatherId].firstName} <-> ${people[motherId].firstName}`);
+        }
       }
       
       // Handle spouse relationship - can be populated object or just ID
-      const spouseId = member.spouse?._id || member.spouse || null;
-      if (spouseId && people[spouseId]) {
+      if (spouseId) {
+        if (people[spouseId]) {
         // Check if relationship already exists (avoid duplicates)
         const existingSpouseRel = relationships.find(r => 
           r.type === 'spouse' && 
@@ -348,10 +832,130 @@ const FamilyTree: React.FC = () => {
             person2Id: spouseId,
             type: 'spouse'
           });
-          console.log(`Added spouse relationship: ${member._id} <-> ${spouseId}`);
+          // Set spouse property on both Person objects
+          if (people[member._id]) {
+            people[member._id].spouse = spouseId;
+          }
+          if (people[spouseId]) {
+            people[spouseId].spouse = member._id;
+          }
+            console.log(`✅ Added spouse relationship: ${member.firstName} <-> ${people[spouseId]?.firstName}`);
+          } else {
+            // Still set spouse property even if relationship already exists
+            if (people[member._id]) {
+              people[member._id].spouse = spouseId;
+            }
+            if (people[spouseId]) {
+              people[spouseId].spouse = member._id;
+            }
+            console.log(`✅ Spouse relationship already exists: ${member.firstName} <-> ${people[spouseId]?.firstName}`);
+          }
+        } else {
+          console.log(`⚠️ Spouse ${spouseId} not found in people object. Available IDs:`, Object.keys(people));
+        }
+      } else {
+        console.log(`ℹ️ No spouse for ${member.firstName}`);
+      }
+    });
+    
+    // FINAL FALLBACK: Pair people with matching relationship types and last names
+    // This ensures great grandparents, grandparents, etc. are paired even if spouse wasn't set
+    const relationshipPairs: { [key: string]: string[] } = {
+      'Great Grandfather': ['Great Grandmother'],
+      'Great Grandmother': ['Great Grandfather'],
+      'Grandfather': ['Grandmother'],
+      'Grandmother': ['Grandfather'],
+      'Father': ['Mother'],
+      'Mother': ['Father']
+    };
+    
+    Object.values(people).forEach(person => {
+      // Skip if already has spouse
+      if (person.spouse) return;
+      
+      const personRel = person.relationship || '';
+      const matchingTypes = relationshipPairs[personRel];
+      
+      if (matchingTypes && matchingTypes.length > 0) {
+        // Find potential spouse with matching relationship type and same last name
+        const potentialSpouse = Object.values(people).find(p => 
+          p.id !== person.id &&
+          !p.spouse &&
+          matchingTypes.includes(p.relationship || '') &&
+          p.generation === person.generation &&
+          (p.lastName || '').trim() === (person.lastName || '').trim() &&
+          (person.lastName || '').trim() !== '' // Last name must not be empty
+        );
+        
+        if (potentialSpouse) {
+          // Check if spouse relationship already exists
+          const existingSpouseRel = relationships.find(r => 
+            r.type === 'spouse' && 
+            ((r.person1Id === person.id && r.person2Id === potentialSpouse.id) ||
+             (r.person1Id === potentialSpouse.id && r.person2Id === person.id))
+          );
+          
+          if (!existingSpouseRel) {
+            relationships.push({
+              id: `rel_${person.id}_spouse_${potentialSpouse.id}_fallback`,
+              person1Id: person.id,
+              person2Id: potentialSpouse.id,
+              type: 'spouse'
+            });
+            person.spouse = potentialSpouse.id;
+            potentialSpouse.spouse = person.id;
+            console.log(`✅ Fallback: Paired ${person.firstName} ${person.lastName} (${personRel}) <-> ${potentialSpouse.firstName} ${potentialSpouse.lastName} (${potentialSpouse.relationship})`);
+          }
         }
       }
     });
+    
+    console.log(`✅ Built ${relationships.length} relationships total`);
+    if (relationships.length > 0) {
+      console.log('📋 All relationships created:');
+      relationships.forEach(rel => {
+        const person1 = people[rel.person1Id];
+        const person2 = people[rel.person2Id];
+        console.log(`  - ${rel.type}: ${person1?.firstName || rel.person1Id} -> ${person2?.firstName || rel.person2Id}`);
+      });
+      
+      // Update root to be the Father/Mother couple if they exist
+      // Find people who have spouse relationships and children (they are the primary couple)
+      const spouseRelationships = relationships.filter(r => r.type === 'spouse');
+      const parentChildRelationships = relationships.filter(r => r.type === 'parent-child');
+      
+      // Find the couple that has the most children (likely the primary couple)
+      const coupleChildrenCount: { [key: string]: number } = {};
+      spouseRelationships.forEach(spouseRel => {
+        const coupleKey = [spouseRel.person1Id, spouseRel.person2Id].sort().join('_');
+        const childrenCount = parentChildRelationships.filter(pc => 
+          pc.person1Id === spouseRel.person1Id || pc.person1Id === spouseRel.person2Id
+        ).length;
+        coupleChildrenCount[coupleKey] = childrenCount;
+      });
+      
+      // Find the couple with most children
+      let bestCoupleKey = '';
+      let maxChildren = 0;
+      Object.keys(coupleChildrenCount).forEach(key => {
+        if (coupleChildrenCount[key] > maxChildren) {
+          maxChildren = coupleChildrenCount[key];
+          bestCoupleKey = key;
+        }
+      });
+      
+      if (bestCoupleKey) {
+        const [p1, p2] = bestCoupleKey.split('_');
+        if (people[p1] && people[p2]) {
+          rootPersonId = p1; // Use first person of the couple as root
+          console.log(`✅ Updated root to primary couple: ${people[p1].firstName} - ${people[p2].firstName} (${maxChildren} children)`);
+        }
+      }
+    } else {
+      console.log('⚠️ WARNING: No relationships were created!');
+      console.log('  - Total people:', Object.keys(people).length);
+      console.log('  - People names:', Object.values(people).map(p => `${p.firstName} ${p.lastName}`));
+    }
 
     console.log('Built tree with:', {
       peopleCount: Object.keys(people).length,
@@ -388,6 +992,458 @@ const FamilyTree: React.FC = () => {
       return newTree;
     });
   };
+
+  // Convert familyTree data to D3 FamilyNode format
+  // This builds a COMPLETE tree including ALL family members (siblings, aunts, uncles, cousins)
+  const convertToD3Format = (): FamilyNode | null => {
+    if (Object.keys(familyTree.people).length === 0) {
+      return null;
+    }
+
+    const people = familyTree.people;
+    const relationships = familyTree.relationships;
+    const allPeopleIds = Object.keys(people);
+    
+    console.log('Converting to D3 format (COMPLETE TREE):', {
+      totalPeople: allPeopleIds.length,
+      relationships: relationships.length,
+      peopleIds: allPeopleIds
+    });
+
+    // Build spouse map
+    const spouseMap: { [key: string]: string } = {};
+    relationships.forEach(rel => {
+      if (rel.type === 'spouse') {
+        spouseMap[rel.person1Id] = rel.person2Id;
+        spouseMap[rel.person2Id] = rel.person1Id;
+      }
+    });
+
+    // Build children map (child -> parents) to find couples
+    const childToParentsMap: { [key: string]: string[] } = {};
+    relationships.forEach(rel => {
+      if (rel.type === 'parent-child') {
+        const parentId = rel.person1Id;
+        const childId = rel.person2Id;
+        if (!childToParentsMap[childId]) {
+          childToParentsMap[childId] = [];
+        }
+        childToParentsMap[childId].push(parentId);
+      }
+    });
+
+    // Build couple map (couple key -> children)
+    // A couple is identified by having children together
+    const coupleToChildrenMap: { [key: string]: string[] } = {};
+    const coupleMap: { [key: string]: { parent1: string; parent2: string } } = {};
+    
+    Object.keys(childToParentsMap).forEach(childId => {
+      const parents = childToParentsMap[childId];
+      if (parents.length >= 2) {
+        // This child has both parents - they are a couple
+        const [parent1, parent2] = parents.sort();
+        const coupleKey = `${parent1}_${parent2}`;
+        
+        if (!coupleToChildrenMap[coupleKey]) {
+          coupleToChildrenMap[coupleKey] = [];
+          coupleMap[coupleKey] = { parent1, parent2 };
+        }
+        coupleToChildrenMap[coupleKey].push(childId);
+      } else if (parents.length === 1) {
+        // Single parent - check if they have a spouse
+        const parentId = parents[0];
+        const spouseId = spouseMap[parentId];
+        if (spouseId) {
+          // Create couple key with spouse
+          const [p1, p2] = [parentId, spouseId].sort();
+          const coupleKey = `${p1}_${p2}`;
+          if (!coupleToChildrenMap[coupleKey]) {
+            coupleToChildrenMap[coupleKey] = [];
+            coupleMap[coupleKey] = { parent1: p1, parent2: p2 };
+          }
+          coupleToChildrenMap[coupleKey].push(childId);
+        } else {
+          // Single parent without spouse
+          const coupleKey = `single_${parentId}`;
+          if (!coupleToChildrenMap[coupleKey]) {
+            coupleToChildrenMap[coupleKey] = [];
+            coupleMap[coupleKey] = { parent1: parentId, parent2: '' };
+          }
+          coupleToChildrenMap[coupleKey].push(childId);
+        }
+      }
+    });
+
+    // Build children map for individual parents (for backward compatibility)
+    const childrenMap: { [key: string]: string[] } = {};
+    relationships.forEach(rel => {
+      if (rel.type === 'parent-child') {
+        const parentId = rel.person1Id;
+        const childId = rel.person2Id;
+        if (!childrenMap[parentId]) {
+          childrenMap[parentId] = [];
+        }
+        childrenMap[parentId].push(childId);
+      }
+    });
+
+    // Build parent map (child -> parents) to find who has no parents
+    const parentMap: { [key: string]: string[] } = {};
+    relationships.forEach(rel => {
+      if (rel.type === 'parent-child') {
+        const parentId = rel.person1Id;
+        const childId = rel.person2Id;
+        if (!parentMap[childId]) {
+          parentMap[childId] = [];
+        }
+        parentMap[childId].push(parentId);
+      }
+    });
+
+    // Find root couple or person (people with no parents)
+    const rootPeopleIds = allPeopleIds.filter(id => !parentMap[id] || parentMap[id].length === 0);
+    
+    // Find root couple (couple with LOWEST generation - grandparents should be at top)
+    let rootCoupleKey: string | null = null;
+    let rootPersonId = familyTree.rootPersonId;
+    
+    // First, find people with the LOWEST generation (these are the grandparents/oldest generation)
+    const allPeople = Object.values(people);
+    const minGeneration = Math.min(...allPeople.map(p => p.generation || 0));
+    const lowestGenPeople = allPeople.filter(p => (p.generation || 0) === minGeneration);
+    
+    // Prefer root people (no parents) if they exist and are in the lowest generation
+    const rootPeopleInLowestGen = rootPeopleIds.filter(id => {
+      const person = people[id];
+      return person && (person.generation || 0) === minGeneration;
+    });
+    
+    // Use root people in lowest generation, or all people in lowest generation
+    const candidates = rootPeopleInLowestGen.length > 0 ? rootPeopleInLowestGen : lowestGenPeople.map(p => p.id);
+    
+    if (candidates.length > 0) {
+      // Find if any candidates are part of a couple
+      for (const candidateId of candidates) {
+        const spouseId = spouseMap[candidateId];
+        if (spouseId && candidates.includes(spouseId)) {
+          // Found a root couple in lowest generation
+          const [p1, p2] = [candidateId, spouseId].sort();
+          rootCoupleKey = `${p1}_${p2}`;
+          rootPersonId = candidateId; // Use first person as representative
+          break;
+        }
+      }
+      
+      // If no couple found, use first candidate
+      if (!rootCoupleKey && candidates.length > 0) {
+        rootPersonId = candidates[0];
+      }
+    } else {
+      // Fallback: use lowest generation from all people
+      const sortedPeople = allPeople.sort((a, b) => (a.generation || 0) - (b.generation || 0));
+      if (sortedPeople.length > 0) {
+        rootPersonId = sortedPeople[0].id;
+        const spouseId = spouseMap[rootPersonId];
+        if (spouseId) {
+          const [p1, p2] = [rootPersonId, spouseId].sort();
+          rootCoupleKey = `${p1}_${p2}`;
+        }
+      }
+    }
+
+    if (!rootPersonId || !people[rootPersonId]) {
+      return null;
+    }
+
+    // Track all visited people
+    const visited = new Set<string>();
+
+    // Recursive function to build tree node
+    const buildNode = (personId: string, visitedSet: Set<string>): FamilyNode | null => {
+      if (visitedSet.has(personId)) {
+        return null; // Prevent cycles
+      }
+      visitedSet.add(personId);
+      visited.add(personId);
+
+      const person = people[personId];
+      if (!person) {
+        return null;
+      }
+
+      const fullName = `${person.firstName} ${person.lastName}`.trim();
+      const spouseId = spouseMap[personId];
+      let spouseName: string | undefined = undefined;
+
+      if (spouseId && people[spouseId]) {
+        const spouse = people[spouseId];
+        spouseName = `${spouse.firstName} ${spouse.lastName}`.trim();
+        visited.add(spouseId); // Mark spouse as visited
+      }
+
+      // Get children - check if this person is part of a couple
+      let childIds: string[] = [];
+      if (spouseId) {
+        // Check couple map
+        const [p1, p2] = [personId, spouseId].sort();
+        const coupleKey = `${p1}_${p2}`;
+        if (coupleToChildrenMap[coupleKey]) {
+          childIds = coupleToChildrenMap[coupleKey];
+        }
+      }
+      
+      // Fallback to individual children map
+      if (childIds.length === 0) {
+        childIds = childrenMap[personId] || [];
+      }
+
+      // IMPORTANT: Filter out spouse from children - spouse should NEVER be a child
+      childIds = childIds.filter(childId => {
+        // If this "child" is actually the spouse, exclude it
+        if (childId === spouseId) {
+          console.log(`Excluding spouse ${spouseId} from children of ${personId}`);
+          return false;
+        }
+        // If this "child" has a spouse relationship with the current person, exclude it
+        if (spouseMap[childId] === personId || spouseMap[personId] === childId) {
+          console.log(`Excluding spouse relationship ${childId} from children of ${personId}`);
+          return false;
+        }
+        return true;
+      });
+
+      const children: FamilyNode[] = [];
+      const processedChildren = new Set<string>();
+
+      childIds.forEach(childId => {
+        if (processedChildren.has(childId)) return;
+        // Double check: don't add spouse as child
+        if (childId === spouseId || spouseMap[childId] === personId) {
+          return;
+        }
+        processedChildren.add(childId);
+        
+        const childNode = buildNode(childId, new Set(visitedSet));
+        if (childNode) {
+          children.push(childNode);
+        }
+      });
+
+      // Get relationship from person data if available
+      const relationship = person.relationship || '';
+      
+      return {
+        name: fullName,
+        spouse: spouseName,
+        children: children.length > 0 ? children : undefined,
+        relationship: relationship || undefined
+      };
+    };
+
+    // Build main tree from root
+    let rootNode: FamilyNode | null = null;
+    
+    // First, try to find if root person has a spouse
+    const rootSpouseId = spouseMap[rootPersonId];
+    
+    console.log('🔍 Root person check:');
+    console.log('  - rootPersonId:', rootPersonId);
+    console.log('  - rootName:', people[rootPersonId]?.firstName);
+    console.log('  - rootSpouseId:', rootSpouseId);
+    console.log('  - rootSpouseName:', rootSpouseId ? people[rootSpouseId]?.firstName : 'none');
+    console.log('  - spouseMap keys:', Object.keys(spouseMap));
+    console.log('  - spouseMap entries:', Object.keys(spouseMap).map(id => ({
+      person: people[id]?.firstName,
+      spouse: people[spouseMap[id]]?.firstName
+    })));
+    
+    // If root has a spouse and both are root people (no parents), show as couple
+    if (rootSpouseId && people[rootSpouseId]) {
+      const rootPerson = people[rootPersonId];
+      const spousePerson = people[rootSpouseId];
+      
+      // Check if both are root people (no parents)
+      const rootHasParents = parentMap[rootPersonId] && parentMap[rootPersonId].length > 0;
+      const spouseHasParents = parentMap[rootSpouseId] && parentMap[rootSpouseId].length > 0;
+      
+      if (!rootHasParents && !spouseHasParents) {
+        // Both are root - show as couple
+        const name1 = `${rootPerson.firstName} ${rootPerson.lastName}`.trim();
+        const name2 = `${spousePerson.firstName} ${spousePerson.lastName}`.trim();
+        
+        visited.add(rootPersonId);
+        visited.add(rootSpouseId);
+        
+        // Get children of the couple
+        const [p1, p2] = [rootPersonId, rootSpouseId].sort();
+        const coupleKey = `${p1}_${p2}`;
+        let childIds = coupleToChildrenMap[coupleKey] || [];
+        
+        // Fallback: get children from either parent
+        if (childIds.length === 0) {
+          const childrenFromRoot = childrenMap[rootPersonId] || [];
+          const childrenFromSpouse = childrenMap[rootSpouseId] || [];
+          // Combine and deduplicate
+          childIds = [...new Set([...childrenFromRoot, ...childrenFromSpouse])];
+        }
+        
+        // Filter out spouses from children - CRITICAL CHECK
+        childIds = childIds.filter(id => {
+          if (id === rootPersonId || id === rootSpouseId) {
+            console.log(`🚫 Filtering out ${id} from children - it's a spouse`);
+            return false;
+          }
+          // Double check: if this ID is in spouseMap with root or spouse, exclude it
+          if (spouseMap[id] === rootPersonId || spouseMap[id] === rootSpouseId || 
+              spouseMap[rootPersonId] === id || spouseMap[rootSpouseId] === id) {
+            console.log(`🚫 Filtering out ${id} from children - spouse relationship detected`);
+            return false;
+          }
+          return true;
+        });
+        
+        console.log(`Building root couple tree: ${name1} - ${name2}, children:`, childIds.map(id => people[id]?.firstName));
+        
+        const children: FamilyNode[] = [];
+        const processedChildren = new Set<string>();
+
+        childIds.forEach(childId => {
+          if (processedChildren.has(childId)) return;
+          if (childId === rootPersonId || childId === rootSpouseId) return;
+          // Final check: ensure not a spouse
+          if (spouseMap[childId] === rootPersonId || spouseMap[childId] === rootSpouseId) {
+            console.log(`🚫 Skipping ${childId} - it's a spouse, not a child`);
+            return;
+          }
+          processedChildren.add(childId);
+          
+          const childNode = buildNode(childId, new Set());
+          if (childNode) {
+            children.push(childNode);
+          }
+        });
+
+        rootNode = {
+          name: name1,
+          spouse: name2,
+          children: children.length > 0 ? children : undefined
+        };
+      } else {
+        // One has parents, build normally
+        rootNode = buildNode(rootPersonId, new Set());
+      }
+    } else if (rootCoupleKey && coupleMap[rootCoupleKey]) {
+      // Try couple map approach
+      const couple = coupleMap[rootCoupleKey];
+      const person1 = people[couple.parent1];
+      const person2 = people[couple.parent2];
+      
+      if (person1 && person2) {
+        const name1 = `${person1.firstName} ${person1.lastName}`.trim();
+        const name2 = `${person2.firstName} ${person2.lastName}`.trim();
+        
+        visited.add(couple.parent1);
+        visited.add(couple.parent2);
+        
+        const childIds = coupleToChildrenMap[rootCoupleKey] || [];
+        // Filter out spouses
+        const filteredChildIds = childIds.filter(id => id !== couple.parent1 && id !== couple.parent2);
+        
+        const children: FamilyNode[] = [];
+        const processedChildren = new Set<string>();
+
+        filteredChildIds.forEach(childId => {
+          if (processedChildren.has(childId)) return;
+          processedChildren.add(childId);
+          
+          const childNode = buildNode(childId, new Set());
+          if (childNode) {
+            children.push(childNode);
+          }
+        });
+
+        rootNode = {
+          name: name1,
+          spouse: name2,
+          children: children.length > 0 ? children : undefined
+        };
+      }
+    } else {
+      // Build from single root person
+      rootNode = buildNode(rootPersonId, new Set());
+    }
+    
+    // Find disconnected members (not visited yet)
+    const disconnectedIds = allPeopleIds.filter(id => !visited.has(id));
+    
+    console.log('🌳 Tree conversion result:');
+    console.log('  - rootPersonId:', rootPersonId);
+    console.log('  - rootCoupleKey:', rootCoupleKey);
+    console.log('  - rootName:', rootNode?.name);
+    console.log('  - rootSpouse:', rootNode?.spouse);
+    console.log('  - rootChildren count:', rootNode?.children?.length || 0);
+    console.log('  - rootChildren names:', rootNode?.children?.map(c => c.name) || []);
+    console.log('  - visitedCount:', visited.size);
+    console.log('  - disconnectedCount:', disconnectedIds.length);
+    console.log('  - disconnectedIds:', disconnectedIds);
+
+    // Add disconnected members as children if they exist
+    if (rootNode && disconnectedIds.length > 0) {
+      const disconnectedChildren: FamilyNode[] = [];
+      const processedDisconnected = new Set<string>();
+      
+      disconnectedIds.forEach(id => {
+        if (processedDisconnected.has(id)) return;
+        
+        const person = people[id];
+        if (!person) return;
+
+        const fullName = `${person.firstName} ${person.lastName}`.trim();
+        const spouseId = spouseMap[id];
+        let spouseName: string | undefined = undefined;
+
+        if (spouseId && people[spouseId]) {
+          const spouse = people[spouseId];
+          spouseName = `${spouse.firstName} ${spouse.lastName}`.trim();
+          processedDisconnected.add(spouseId);
+        }
+
+        // Check if this person has children
+        const hasChildren = (childrenMap[id] && childrenMap[id].length > 0) || 
+                           (coupleToChildrenMap[`single_${id}`] && coupleToChildrenMap[`single_${id}`].length > 0);
+        
+        if (hasChildren) {
+          const disconnectedNode = buildNode(id, new Set());
+          if (disconnectedNode) {
+            disconnectedChildren.push(disconnectedNode);
+            processedDisconnected.add(id);
+          }
+        } else {
+          disconnectedChildren.push({
+            name: fullName,
+            spouse: spouseName
+          });
+          processedDisconnected.add(id);
+        }
+      });
+
+      if (disconnectedChildren.length > 0) {
+        if (rootNode.children) {
+          rootNode.children.push(...disconnectedChildren);
+        } else {
+          rootNode.children = disconnectedChildren;
+        }
+      }
+    }
+
+    return rootNode;
+  };
+
+  // Update D3 tree data when familyTree changes
+  useEffect(() => {
+    const d3Data = convertToD3Format();
+    setD3TreeData(d3Data);
+  }, [familyTree]);
 
   const getAvatarForGender = (gender: string): string => {
     if (gender === 'female') return '👩';
@@ -440,13 +1496,15 @@ const FamilyTree: React.FC = () => {
       let fatherId = '';
       let motherId = '';
       let spouseId = '';
+      let relationshipValue = relationshipType;
 
-      if (relationshipType === 'root') {
+      if (relationshipType === 'Root Person (Start Here)') {
         if (familyTree.rootPersonId) {
           alert('Root person already exists! Use other relationship types.');
           return;
         }
         generation = 0; // Root should be generation 0
+        relationshipValue = gender === 'male' ? 'Father' : 'Mother';
       } else {
         if (!relativeId) {
           alert('Please select a relative!');
@@ -459,41 +1517,350 @@ const FamilyTree: React.FC = () => {
           return;
         }
 
-        if (relationshipType === 'parent') {
-          generation = relative.generation - 1;
-        } else if (relationshipType === 'spouse') {
+        // Handle different relationship types
+        if (relationshipType === 'Spouse') {
           generation = relative.generation;
           spouseId = relativeId;
-        } else if (relationshipType === 'child') {
+        } else if (relationshipType === 'Father' || relationshipType === 'Mother') {
+          // Parent of the selected relative
+          generation = relative.generation - 1;
+          // If relative has parents, use them; otherwise, this person becomes the parent
+          if (relative.gender === 'male') {
+            // Relative is male, so this person should be their parent
+            // Check if relative has a spouse - if yes, spouse's parents become this person's parents
+            const relativeSpouse = getSpouse(relativeId);
+            if (relativeSpouse) {
+              // Try to find relative's parents
+              const relativeParents = Object.values(familyTree.people).filter(p => 
+                p.children?.includes(relativeId)
+              );
+              if (relativeParents.length > 0) {
+                const maleParent = relativeParents.find(p => p.gender === 'male');
+                const femaleParent = relativeParents.find(p => p.gender === 'female');
+                if (maleParent) fatherId = maleParent.id;
+                if (femaleParent) motherId = femaleParent.id;
+              }
+            }
+          }
+        } else if (relationshipType === 'Grandfather' || relationshipType === 'Grandmother') {
+          generation = relative.generation - 2;
+          // Try to find the matching grandparent to pair as spouse
+          // Look for opposite gender grandparent at the same generation who is not already married
+          const oppositeGender = relationshipType === 'Grandfather' ? 'female' : 'male';
+          const matchingRel = relationshipType === 'Grandfather' ? 'grandmother' : 'grandfather';
+          
+          // Smart matching: prioritize couples that share children, then same last name
+          // This prevents incorrect cross-family pairings
+          const newPersonLastName = lastName.trim(); // The person we're adding
+          
+          const matchingGrandparent = Object.values(familyTree.people).find(p => {
+            const pRel = (p.relationship || '').toLowerCase().trim();
+            const isMatchingRel = pRel === matchingRel.toLowerCase();
+            const isOppositeGender = p.gender === oppositeGender;
+            const isSameGeneration = p.generation === generation;
+            const notMarried = !p.spouse;
+            
+            if (!isMatchingRel || !isOppositeGender || !isSameGeneration || !notMarried) {
+              return false;
+            }
+            
+            // Priority 1: Check if the relative is a child of this grandparent
+            const relativePerson = familyTree.people[relativeId];
+            if (relativePerson) {
+              const pChildren = p.children || [];
+              const isRelativeAChild = pChildren.includes(relativeId);
+              
+              if (isRelativeAChild) {
+                console.log(`  ✅ Found matching grandparent - relative ${relativePerson.firstName} is their child: ${p.firstName} ${p.lastName}`);
+                return true;
+              }
+              
+              // Also check if they share any children
+              const relativeChildren = relativePerson.children || [];
+              const shareChildren = relativeChildren.some(childId => pChildren.includes(childId));
+              
+              if (shareChildren) {
+                console.log(`  ✅ Found matching grandparent with shared children: ${p.firstName} ${p.lastName}`);
+                return true;
+              }
+            }
+            
+            // Priority 2: Check last name - if they have the same last name, they're likely a couple
+            const pLastName = (p.lastName || '').trim();
+            const sameLastName = newPersonLastName && pLastName && newPersonLastName === pLastName;
+            
+            if (sameLastName) {
+              console.log(`  ✅ Found matching grandparent with same last name (${newPersonLastName}): ${p.firstName} ${p.lastName}`);
+              return true;
+            }
+            
+            // Don't auto-match if we don't have strong evidence
+            if (pRel.includes('grand')) {
+              console.log(`  ⚠️ Skipping ${p.firstName} ${p.lastName} - no shared children or same last name (${pLastName} vs ${newPersonLastName})`);
+            }
+            
+            return false;
+          });
+          
+          if (matchingGrandparent) {
+            // Found matching grandparent - they should be spouses
+            spouseId = matchingGrandparent.id;
+            console.log(`✅ Auto-pairing grandparents: ${relationshipType} with ${matchingGrandparent.firstName} ${matchingGrandparent.lastName}`);
+          } else {
+            console.log(`ℹ️ No matching ${matchingRel} found for ${relationshipType} at generation ${generation}`);
+          }
+          // Find relative's grandparents for parent relationships
+          const relativeParents = Object.values(familyTree.people).filter(p => 
+            p.children?.includes(relativeId)
+          );
+          if (relativeParents.length > 0) {
+            const grandParent = relativeParents[0];
+            const grandParents = Object.values(familyTree.people).filter(p => 
+              p.children?.includes(grandParent.id)
+            );
+            if (grandParents.length > 0) {
+              const maleGrandParent = grandParents.find(p => p.gender === 'male');
+              const femaleGrandParent = grandParents.find(p => p.gender === 'female');
+              if (maleGrandParent) fatherId = maleGrandParent.id;
+              if (femaleGrandParent) motherId = femaleGrandParent.id;
+            }
+          }
+        } else if (relationshipType === 'Great Grandfather' || relationshipType === 'Great Grandmother') {
+          generation = relative.generation - 3;
+          // Try to find the matching great grandparent to pair as spouse
+          // Look for opposite gender great grandparent at the same generation who is not already married
+          const oppositeGender = relationshipType === 'Great Grandfather' ? 'female' : 'male';
+          const matchingRel = relationshipType === 'Great Grandfather' ? 'great grandmother' : 'great grandfather';
+          
+          // Debug: Log all potential matches
+          const allGreatGrandparents = Object.values(familyTree.people).filter(p => {
+            const pRel = (p.relationship || '').toLowerCase().trim();
+            return pRel.includes('great grand');
+          });
+          console.log(`🔍 Looking for matching ${matchingRel} for ${relationshipType}:`, {
+            generation,
+            oppositeGender,
+            availableGreatGrandparents: allGreatGrandparents.map(p => ({
+              name: p.firstName + ' ' + p.lastName,
+              relationship: p.relationship,
+              gender: p.gender,
+              generation: p.generation,
+              hasSpouse: !!p.spouse
+            }))
+          });
+          
+          // Smart matching: prioritize couples that share children, then same last name
+          // This prevents incorrect cross-family pairings (e.g., Krishna A with Sita B)
+          // Note: We're adding a new person, so we check if existing great grandparents match
+          const newPersonLastName = lastName.trim(); // The person we're adding
+          
+          const matchingGreatGrandparent = Object.values(familyTree.people).find(p => {
+            const pRel = (p.relationship || '').toLowerCase().trim();
+            const isMatchingRel = pRel === matchingRel.toLowerCase();
+            const isOppositeGender = p.gender === oppositeGender;
+            const isSameGeneration = p.generation === generation;
+            const notMarried = !p.spouse;
+            
+            if (!isMatchingRel || !isOppositeGender || !isSameGeneration || !notMarried) {
+              return false;
+            }
+            
+            // Priority 1: Check if they share children - strongest indicator of a couple
+            // If the relative (person we're adding relative to) is a child of this great grandparent,
+            // and we're adding the spouse, they should be paired
+            const relativePerson = familyTree.people[relativeId];
+            if (relativePerson) {
+              const pChildren = p.children || [];
+              const isRelativeAChild = pChildren.includes(relativeId);
+              
+              if (isRelativeAChild) {
+                console.log(`  ✅ Found matching great grandparent - relative ${relativePerson.firstName} is their child: ${p.firstName} ${p.lastName}`);
+                return true;
+              }
+              
+              // Also check if they share any children
+              const relativeChildren = relativePerson.children || [];
+              const shareChildren = relativeChildren.some(childId => pChildren.includes(childId));
+              
+              if (shareChildren) {
+                console.log(`  ✅ Found matching great grandparent with shared children: ${p.firstName} ${p.lastName}`);
+                return true;
+              }
+            }
+            
+            // Priority 2: Check last name - if they have the same last name, they're likely a couple
+            // This is especially useful when children haven't been added yet
+            // Compare the NEW person's last name with the existing person's last name
+            const pLastName = (p.lastName || '').trim();
+            const sameLastName = newPersonLastName && pLastName && newPersonLastName === pLastName;
+            
+            if (sameLastName) {
+              console.log(`  ✅ Found matching great grandparent with same last name (${newPersonLastName}): ${p.firstName} ${p.lastName}`);
+              return true;
+            }
+            
+            // Don't auto-match if we don't have strong evidence (shared children or same last name)
+            // This prevents incorrect cross-family pairings (e.g., Krishna A with Sita B)
+            if (pRel.includes('great grand')) {
+              console.log(`  ⚠️ Skipping ${p.firstName} ${p.lastName} - no shared children or same last name (${pLastName} vs ${newPersonLastName}, might be from different family)`);
+            }
+            
+            return false;
+          });
+          
+          if (matchingGreatGrandparent) {
+            // Found matching great grandparent - they should be spouses
+            spouseId = matchingGreatGrandparent.id;
+            console.log(`✅ Auto-pairing great grandparents: ${relationshipType} with ${matchingGreatGrandparent.firstName} ${matchingGreatGrandparent.lastName}`);
+          } else {
+            console.log(`ℹ️ No matching ${matchingRel} found for ${relationshipType} at generation ${generation}`);
+          }
+        } else if (relationshipType === 'Son' || relationshipType === 'Daughter') {
           generation = relative.generation + 1;
           if (relative.gender === 'male') {
             fatherId = relativeId;
-            // Find spouse to set as mother
             const spouse = getSpouse(relativeId);
             if (spouse) {
               motherId = spouse.id;
             }
           } else {
             motherId = relativeId;
-            // Find spouse to set as father
             const spouse = getSpouse(relativeId);
             if (spouse) {
               fatherId = spouse.id;
             }
           }
+        } else if (relationshipType === 'Grandson' || relationshipType === 'Granddaughter') {
+          generation = relative.generation + 2;
+          // Find relative's children to determine parents
+          const relativeChildren = Object.values(familyTree.people).filter(p => {
+            const pFather = p.children?.some(c => {
+              const child = familyTree.people[c];
+              return child && (child.children?.includes(relativeId) || c === relativeId);
+            });
+            return pFather;
+          });
+          // If relative has children, this person is a grandchild of relative
+          // Find the child who would be the parent
+          const potentialParent = Object.values(familyTree.people).find(p => 
+            p.children?.includes(relativeId) || 
+            (relative.children && relative.children.includes(p.id))
+          );
+          if (potentialParent) {
+            if (potentialParent.gender === 'male') {
+              fatherId = potentialParent.id;
+              const spouse = getSpouse(potentialParent.id);
+              if (spouse) motherId = spouse.id;
+            } else {
+              motherId = potentialParent.id;
+              const spouse = getSpouse(potentialParent.id);
+              if (spouse) fatherId = spouse.id;
+            }
+          }
+        } else if (relationshipType === 'Uncle' || relationshipType === 'Aunt') {
+          // Uncle/Aunt is sibling of the selected relative's parent
+          // If relative is a child, uncle/aunt is sibling of that child's parent
+          // If relative is a parent, uncle/aunt is sibling of that parent
+          // Find relative's parents to determine uncle/aunt's parents (same as relative's parents)
+          const relativeParents = Object.values(familyTree.people).filter(p => 
+            p.children?.includes(relativeId)
+          );
+          if (relativeParents.length > 0) {
+            // Relative has parents, so uncle/aunt shares those same parents
+            generation = relativeParents[0].generation;
+            const maleParent = relativeParents.find(p => p.gender === 'male');
+            const femaleParent = relativeParents.find(p => p.gender === 'female');
+            if (maleParent) fatherId = maleParent.id;
+            if (femaleParent) motherId = femaleParent.id;
+          } else {
+            // If relative doesn't have parents, uncle/aunt is at same generation as relative
+            // This means they're siblings
+            generation = relative.generation;
+          }
+        } else if (relationshipType === 'Nephew' || relationshipType === 'Niece') {
+          // Nephew/Niece is child of sibling, so one generation below uncle/aunt
+          // Find relative's children to determine generation
+          generation = relative.generation + 1;
+          // Find relative's sibling who would be the parent
+          const relativeParents = Object.values(familyTree.people).filter(p => 
+            p.children?.includes(relativeId)
+          );
+          if (relativeParents.length > 0) {
+            const parent = relativeParents[0];
+            // Find parent's siblings (other children of parent's parents)
+            const grandParents = Object.values(familyTree.people).filter(p => 
+              p.children?.includes(parent.id)
+            );
+            if (grandParents.length > 0) {
+              const grandParent = grandParents[0];
+              const siblings = Object.values(familyTree.people).filter(p => 
+                grandParent.children?.includes(p.id) && p.id !== parent.id
+              );
+              if (siblings.length > 0) {
+                const sibling = siblings[0];
+                if (sibling.gender === 'male') {
+                  fatherId = sibling.id;
+                  const spouse = getSpouse(sibling.id);
+                  if (spouse) motherId = spouse.id;
+                } else {
+                  motherId = sibling.id;
+                  const spouse = getSpouse(sibling.id);
+                  if (spouse) fatherId = spouse.id;
+                }
+              }
+            }
+          }
+        } else if (relationshipType === 'Brother' || relationshipType === 'Sister') {
+          // Sibling - same generation, same parents
+          generation = relative.generation;
+          const relativeParents = Object.values(familyTree.people).filter(p => 
+            p.children?.includes(relativeId)
+          );
+          if (relativeParents.length > 0) {
+            const maleParent = relativeParents.find(p => p.gender === 'male');
+            const femaleParent = relativeParents.find(p => p.gender === 'female');
+            if (maleParent) fatherId = maleParent.id;
+            if (femaleParent) motherId = femaleParent.id;
+          }
+        } else if (relationshipType === 'Cousin') {
+          // Cousin is child of uncle/aunt, so same generation as child of parent's sibling
+          // Find relative's parents
+          const relativeParents = Object.values(familyTree.people).filter(p => 
+            p.children?.includes(relativeId)
+          );
+          if (relativeParents.length > 0) {
+            generation = relative.generation;
+            // Find parent's sibling (uncle/aunt)
+            const parent = relativeParents[0];
+            const grandParents = Object.values(familyTree.people).filter(p => 
+              p.children?.includes(parent.id)
+            );
+            if (grandParents.length > 0) {
+              const grandParent = grandParents[0];
+              const unclesAunts = Object.values(familyTree.people).filter(p => 
+                grandParent.children?.includes(p.id) && p.id !== parent.id
+              );
+              if (unclesAunts.length > 0) {
+                const uncleAunt = unclesAunts[0];
+                if (uncleAunt.gender === 'male') {
+                  fatherId = uncleAunt.id;
+                  const spouse = getSpouse(uncleAunt.id);
+                  if (spouse) motherId = spouse.id;
+                } else {
+                  motherId = uncleAunt.id;
+                  const spouse = getSpouse(uncleAunt.id);
+                  if (spouse) fatherId = spouse.id;
+                }
+              }
+            }
+          } else {
+            generation = relative.generation;
+          }
+        } else {
+          // Default: Other - try to infer from context
+          relationshipValue = 'Other';
+          generation = relative.generation;
         }
-      }
-
-      // Map relationship type to valid enum value
-      let relationshipValue = 'Other';
-      if (relationshipType === 'root') {
-        relationshipValue = gender === 'male' ? 'Father' : 'Mother';
-      } else if (relationshipType === 'parent') {
-        relationshipValue = gender === 'male' ? 'Grandfather' : 'Grandmother';
-      } else if (relationshipType === 'spouse') {
-        relationshipValue = 'Spouse';
-      } else if (relationshipType === 'child') {
-        relationshipValue = gender === 'male' ? 'Son' : 'Daughter';
       }
 
       // Create FormData for API
@@ -569,7 +1936,10 @@ const FamilyTree: React.FC = () => {
           avatar,
           photo: photoUrl,
           generation: newMember.generation || 1,
-          _id: newMemberId
+          relationship: newMember.relationship || undefined,
+          _id: newMemberId,
+          children: [],
+          spouse: spouseId || undefined
         };
         
         // Update tree state immediately with optimistic update
@@ -602,23 +1972,46 @@ const FamilyTree: React.FC = () => {
               console.log(`Added mother relationship: ${motherId} -> ${newMemberId}`);
             }
           }
-          if (newMember.spouse?._id || newMember.spouse) {
-            const spouseId = newMember.spouse?._id || newMember.spouse;
-            if (updatedPeople[spouseId]) {
+          if (newMember.spouse?._id || newMember.spouse || spouseId) {
+            const spouseIdToUse = newMember.spouse?._id || newMember.spouse || spouseId;
+            if (updatedPeople[spouseIdToUse]) {
               // Check for duplicate
               const existing = updatedRelationships.find(r => 
                 r.type === 'spouse' && 
-                ((r.person1Id === newMemberId && r.person2Id === spouseId) ||
-                 (r.person1Id === spouseId && r.person2Id === newMemberId))
+                ((r.person1Id === newMemberId && r.person2Id === spouseIdToUse) ||
+                 (r.person1Id === spouseIdToUse && r.person2Id === newMemberId))
               );
               if (!existing) {
                 updatedRelationships.push({
-                  id: `rel_${newMemberId}_spouse_${spouseId}`,
+                  id: `rel_${newMemberId}_spouse_${spouseIdToUse}`,
                   person1Id: newMemberId,
-                  person2Id: spouseId,
+                  person2Id: spouseIdToUse,
                   type: 'spouse'
                 });
-                console.log(`Added spouse relationship: ${newMemberId} <-> ${spouseId}`);
+                // Set spouse property on both Person objects
+                updatedPeople[newMemberId] = {
+                  ...updatedPeople[newMemberId],
+                  spouse: spouseIdToUse
+                };
+                if (updatedPeople[spouseIdToUse]) {
+                  updatedPeople[spouseIdToUse] = {
+                    ...updatedPeople[spouseIdToUse],
+                    spouse: newMemberId
+                  };
+                }
+                console.log(`Added spouse relationship: ${newMemberId} <-> ${spouseIdToUse}`);
+              } else {
+                // Still set spouse property even if relationship already exists
+                updatedPeople[newMemberId] = {
+                  ...updatedPeople[newMemberId],
+                  spouse: spouseIdToUse
+                };
+                if (updatedPeople[spouseIdToUse]) {
+                  updatedPeople[spouseIdToUse] = {
+                    ...updatedPeople[spouseIdToUse],
+                    spouse: newMemberId
+                  };
+                }
               }
             }
           }
@@ -678,7 +2071,7 @@ const FamilyTree: React.FC = () => {
       email: '',
       gender: 'male',
       dateOfBirth: '',
-      relationshipType: 'root',
+      relationshipType: 'Root Person (Start Here)',
       relativeId: ''
     });
     setCurrentPhotoData(null);
@@ -748,6 +2141,8 @@ const FamilyTree: React.FC = () => {
 
   const resetZoom = () => {
     setZoomLevel(1);
+    // Trigger D3 tree reset by incrementing resetTrigger
+    setResetTrigger(prev => prev + 1);
   };
 
   const exportTree = () => {
@@ -1271,101 +2666,26 @@ const FamilyTree: React.FC = () => {
       );
     }
 
-    // Get all people and organize by generation
-    const allPeople = Object.values(familyTree.people);
-    const peopleByGeneration: { [key: number]: Person[] } = {};
-    allPeople.forEach(person => {
-      const gen = person.generation || 0;
-      if (!peopleByGeneration[gen]) {
-        peopleByGeneration[gen] = [];
-      }
-      peopleByGeneration[gen].push(person);
-    });
-
-    // Find root person (lowest generation)
-    let rootPerson = null;
-    if (familyTree.rootPersonId && familyTree.people[familyTree.rootPersonId]) {
-      rootPerson = familyTree.people[familyTree.rootPersonId];
-      console.log('Using rootPersonId:', familyTree.rootPersonId, 'Person:', rootPerson);
-    } else {
-      const sortedPeople = allPeople.sort((a, b) => (a.generation || 0) - (b.generation || 0));
-      rootPerson = sortedPeople[0];
-      console.log('No rootPersonId, using first person by generation:', rootPerson);
-    }
-
-    if (!rootPerson) {
-      console.log('No root person found');
-      return <div>No family members found</div>;
-    }
-
-    console.log('Rendering tree with root person:', rootPerson.firstName, rootPerson.lastName);
-    console.log('All people in tree:', allPeople.map(p => `${p.firstName} ${p.lastName} (gen ${p.generation})`));
-    console.log('All relationships:', familyTree.relationships.map(r => `${r.person1Id} -> ${r.person2Id} (${r.type})`));
-    
-    // Render hierarchical tree starting from root
-    const visited = new Set<string>();
-    const renderedPeople = new Set<string>();
-    
-    // Start rendering from root - pass renderedPeople set to track all rendered people
-    const treeContent = renderHierarchicalTree(rootPerson.id, visited, renderedPeople);
-    
-    // Find and render disconnected members (members not connected to the main tree)
-    // Use a Set to track unique person IDs to prevent duplicates
-    const disconnectedMemberIds = new Set<string>();
-    const disconnectedMembers: Person[] = [];
-    
-    allPeople.forEach(person => {
-      if (!renderedPeople.has(person.id) && !disconnectedMemberIds.has(person.id)) {
-        disconnectedMemberIds.add(person.id);
-        disconnectedMembers.push(person);
-        console.log('Found disconnected member:', person.firstName, person.lastName, 'ID:', person.id);
-      }
-    });
-    
-    // Render disconnected members as standalone person cards (only unique ones)
-    const disconnectedTrees = disconnectedMembers.map((person, index) => {
-      // Check if this person has any relationships
-      const hasRelationships = familyTree.relationships.some(r => 
-        (r.person1Id === person.id || r.person2Id === person.id) &&
-        familyTree.people[r.person1Id] && familyTree.people[r.person2Id] // Both people must exist
-      );
-      
-      if (hasRelationships) {
-        // If they have relationships, render as a tree (might be a separate branch)
-        const disconnectedVisited = new Set<string>(visited); // Share visited to prevent cycles
-        const disconnectedRendered = new Set<string>(renderedPeople); // Share rendered to prevent duplicates
+    if (!d3TreeData) {
         return (
-          <div key={`disconnected-tree-${person.id}`} style={{ marginTop: index > 0 ? '60px' : '0' }}>
-            {renderHierarchicalTree(person.id, disconnectedVisited, disconnectedRendered)}
-          </div>
-        );
-      } else {
-        // If no relationships, just render as a standalone person card
-        return (
-          <div key={`disconnected-${person.id}`} style={{ 
-            marginTop: index > 0 ? '40px' : '0',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-            {renderPersonCard(person)}
+        <div className="empty-state">
+          <div className="empty-icon">👨‍👩‍👧‍👦</div>
+          <h3>Building Family Tree...</h3>
+          <p>Please wait while we organize your family tree</p>
           </div>
         );
       }
-    });
 
   return (
-      <div className="tree-hierarchy" style={{ transform: `scale(${zoomLevel})` }}>
-        {treeContent}
-        {disconnectedTrees.length > 0 && (
-          <div style={{ marginTop: '60px', paddingTop: '40px', borderTop: '3px dashed #667eea' }}>
-            <h3 style={{ textAlign: 'center', color: '#667eea', marginBottom: '30px', fontSize: '18px' }}>
-              Additional Family Members
-            </h3>
-            {disconnectedTrees}
-          </div>
-        )}
-        </div>
+      <D3FamilyTree 
+        data={d3TreeData} 
+        allPeople={familyTree.people} // Pass ALL people data (including siblings, aunts, uncles, cousins)
+        relationships={familyTree.relationships} // Pass ALL relationships to build children arrays
+        width={1200} 
+        height={800}
+        zoomLevel={zoomLevel}
+        resetTrigger={resetTrigger}
+      />
     );
   };
 
@@ -1556,14 +2876,13 @@ const FamilyTree: React.FC = () => {
                 value={formData.relationshipType}
                 onChange={handleRelationshipTypeChange}
               >
-                <option value="root">Root Person (Start Here)</option>
-                <option value="parent">Parent</option>
-                <option value="spouse">Spouse</option>
-                <option value="child">Child</option>
+                {relationshipOptions.map(rel => (
+                  <option key={rel} value={rel}>{rel}</option>
+                ))}
               </select>
             </div>
 
-            {formData.relationshipType !== 'root' && (
+            {formData.relationshipType !== 'Root Person (Start Here)' && (
               <div className="form-group">
                 <label>Select Relative:</label>
                 <select 

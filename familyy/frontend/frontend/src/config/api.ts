@@ -17,8 +17,10 @@ const getApiBase = (): string => {
     return apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
   }
   
-  // Fallback to production API for production
-  return 'https://api.fami.live/api';
+  // No hardcoded fallback - environment variable is required
+  console.error('❌ REACT_APP_API_BASE environment variable is required!');
+  // Return empty string to fail gracefully - will cause API calls to fail with clear error
+  return '';
 };
 
 // Get API URL
@@ -30,7 +32,7 @@ export const getApiUrl = (): string => {
 export const API_URL = getApiUrl();
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE || "https://api.fami.live/api",
+  baseURL: getApiBase(), // Uses REACT_APP_API_BASE from environment
   timeout: 30000, // 30 second timeout
   withCredentials: true, // Send cookies and credentials with requests (required for CORS with credentials)
   // Don't set default Content-Type - let it be set per request (needed for FormData)
