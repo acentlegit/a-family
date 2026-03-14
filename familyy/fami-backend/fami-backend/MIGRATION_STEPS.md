@@ -10,11 +10,11 @@ You need two MongoDB connection strings:
 
 1. **OLD MongoDB** (where your current data is)
    - Example: `mongodb://username:password@old-host:27017/database-name`
-   - Or: `mongodb+srv://username:password@old-cluster.mongodb.net/database-name`
+   - Or: `mongodb+srv://<username>:<password>@cluster.mongodb.net/<database>`
 
 2. **NEW MongoDB** (empty/new database where you want to copy data)
    - Example: `mongodb://username:password@new-host:27017/database-name`
-   - Or: `mongodb+srv://username:password@new-cluster.mongodb.net/database-name`
+   - Or: `mongodb+srv://<username>:<password>@cluster.mongodb.net/<database>`
 
 **Note:** Make sure your NEW database is **empty** or you're okay with existing data being skipped.
 
