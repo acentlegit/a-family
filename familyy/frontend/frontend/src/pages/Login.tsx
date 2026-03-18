@@ -4,17 +4,13 @@ import { useAuth } from '../context/AuthContext';
 import { colors } from '../styles/colors';
 
 const Login: React.FC = () => {
-  // Default user credentials (read from env or use defaults)
-  const DEFAULT_USER_EMAIL = process.env.REACT_APP_DEFAULT_USER_EMAIL || 'arakala1926';
-  const DEFAULT_USER_PASSWORD = process.env.REACT_APP_DEFAULT_USER_PASSWORD || 'a1926$2026';
+  // Default user credentials (read from env only) - for checking only, not for pre-filling
+  const DEFAULT_USER_EMAIL = process.env.REACT_APP_DEFAULT_USER_EMAIL || '';
+  const DEFAULT_USER_PASSWORD = process.env.REACT_APP_DEFAULT_USER_PASSWORD || '';
   
-  // Check if user came from email link (via query parameter or referrer)
-  const urlParams = new URLSearchParams(window.location.search);
-  const fromEmail = urlParams.get('from') === 'email' || document.referrer.includes('mail');
-  
-  // Only pre-fill default credentials if NOT coming from email
-  const [email, setEmail] = useState(fromEmail ? '' : DEFAULT_USER_EMAIL);
-  const [password, setPassword] = useState(fromEmail ? '' : DEFAULT_USER_PASSWORD);
+  // Keep input boxes empty - user must type credentials
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [isDefaultUser, setIsDefaultUser] = useState(false);
@@ -40,9 +36,8 @@ const Login: React.FC = () => {
       try {
         const apiBase = process.env.REACT_APP_API_BASE ? 
           (process.env.REACT_APP_API_BASE.endsWith('/api') ? process.env.REACT_APP_API_BASE : `${process.env.REACT_APP_API_BASE}/api`) :
-          '';
+          (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000/api'); // Only localhost in development
         if (!apiBase) {
-          console.error('❌ REACT_APP_API_BASE is not configured');
           return;
         }
         const response = await fetch(`${apiBase}/auth/check-default-user`, {
@@ -111,9 +106,7 @@ const Login: React.FC = () => {
     }, 30000); // 30 second timeout
 
     try {
-      console.log('🔍 Login - Starting login process...');
-      console.log('🔍 Login - Email:', email);
-      console.log('🔍 Login - API Base:', process.env.REACT_APP_API_BASE || 'Not configured');
+      // Login process started
       
       // Call the login function from AuthContext
       const result = await login(email, password);
@@ -159,21 +152,6 @@ const Login: React.FC = () => {
       clearTimeout(timeoutId);
       setLoading(false);
       
-      // Safe error logging
-      try {
-        console.error('❌ Login error:', err);
-        console.error('❌ Login error message:', err?.message || 'Unknown error');
-        
-        if (err?.response) {
-          console.error('❌ Login error status:', err.response.status);
-          console.error('❌ Login error response:', err.response.data);
-        } else {
-          console.error('❌ Login error: No response (network error)');
-        }
-      } catch (logError) {
-        console.error('❌ Error logging failed:', logError);
-      }
-      
       // Determine error message safely
       let errorMessage = 'Login failed. Please check your credentials.';
       
@@ -196,7 +174,6 @@ const Login: React.FC = () => {
           errorMessage = err.message;
         }
       } catch (msgError) {
-        console.warn('⚠️  Error determining error message:', msgError);
         // Keep default error message
       }
       
@@ -268,7 +245,9 @@ const Login: React.FC = () => {
                 borderRadius: '8px',
                 fontSize: '15px',
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                transition: 'border-color 0.2s',
+                background: '#fff',
+                color: '#000'
               }}
               onFocus={(e) => e.target.style.borderColor = colors.primary}
               onBlur={(e) => e.target.style.borderColor = colors.border}
@@ -308,7 +287,9 @@ const Login: React.FC = () => {
                 borderRadius: '8px',
                 fontSize: '15px',
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                transition: 'border-color 0.2s',
+                background: '#fff',
+                color: '#000'
               }}
               onFocus={(e) => e.target.style.borderColor = colors.primary}
               onBlur={(e) => e.target.style.borderColor = colors.border}

@@ -343,7 +343,7 @@ const Settings: React.FC = () => {
   return (
     <Layout>
       <div>
-        <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 24px 0' }}>
+        <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 24px 0', fontWeight: '600' }}>
           Settings
         </h2>
 
@@ -380,8 +380,8 @@ const Settings: React.FC = () => {
                     alignItems: 'center',
                     gap: '12px',
                     padding: '14px 16px',
-                    background: activeTab === tab.id ? colors.primarySoft : 'transparent',
-                    color: activeTab === tab.id ? colors.primary : colors.body,
+                    background: activeTab === tab.id ? colors.primary : 'transparent',
+                    color: activeTab === tab.id ? 'white' : colors.body,
                     border: 'none',
                     borderRadius: '8px',
                     cursor: 'pointer',
@@ -495,7 +495,7 @@ const Settings: React.FC = () => {
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '48px',
-                              color: colors.primary,
+                              color: '#000',
                               fontWeight: '600',
                               border: `3px solid ${colors.border}`,
                               position: avatarUrl && !avatarError ? 'absolute' : 'relative',
@@ -612,7 +612,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>
@@ -679,7 +681,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>
@@ -699,7 +703,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>
@@ -740,7 +746,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>
@@ -1098,7 +1106,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     >
                       <option value="everyone">Everyone</option>
@@ -1148,7 +1158,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>
@@ -1168,7 +1180,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>
@@ -1188,7 +1202,9 @@ const Settings: React.FC = () => {
                         border: `1px solid ${colors.border}`,
                         borderRadius: '8px',
                         fontSize: '15px',
-                        outline: 'none'
+                        outline: 'none',
+                        background: '#fff',
+                        color: '#000'
                       }}
                     />
                   </div>

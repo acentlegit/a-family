@@ -324,8 +324,8 @@ const Memories: React.FC = () => {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 8px 0' }}>Family Memories</h2>
-            <p style={{ color: colors.muted, margin: 0 }}>Share and cherish special moments</p>
+            <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 8px 0', fontWeight: '600' }}>Family Memories</h2>
+            <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>Share and cherish special moments</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -385,10 +385,11 @@ const Memories: React.FC = () => {
             <div
               key={memory._id}
               style={{
-                background: colors.cardBg,
+                background: '#fff',
                 borderRadius: '12px',
                 border: `1px solid ${colors.border}`,
-                overflow: 'hidden'
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}
             >
               {(() => {
@@ -521,7 +522,7 @@ const Memories: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: colors.muted
+                  color: '#333'
                 }}>
                   No image available
                 </div>
@@ -543,10 +544,10 @@ const Memories: React.FC = () => {
                     {memory.createdBy?.firstName?.[0] || 'U'}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <h4 style={{ fontSize: '15px', color: colors.title, margin: '0 0 2px 0' }}>
+                    <h4 style={{ fontSize: '15px', color: '#000', margin: '0 0 2px 0', fontWeight: '500' }}>
                       {memory.createdBy?.firstName} {memory.createdBy?.lastName}
                     </h4>
-                    <p style={{ fontSize: '12px', color: colors.muted, margin: 0 }}>
+                    <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>
                       {new Date(memory.createdAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -628,14 +629,14 @@ const Memories: React.FC = () => {
                   )}
                 </div>
 
-                <h3 style={{ fontSize: '18px', color: colors.title, margin: '0 0 8px 0' }}>
+                <h3 style={{ fontSize: '18px', color: '#000', margin: '0 0 8px 0', fontWeight: '600' }}>
                   {memory.title}
                 </h3>
                 <p style={{ color: colors.body, fontSize: '14px', margin: '0 0 8px 0' }}>
                   {memory.description}
                 </p>
                 {memory.location && (
-                  <p style={{ color: colors.muted, fontSize: '13px', margin: '0 0 16px 0' }}>
+                  <p style={{ color: '#333', fontSize: '13px', margin: '0 0 16px 0' }}>
                     📍 {memory.location}
                   </p>
                 )}
@@ -687,17 +688,18 @@ const Memories: React.FC = () => {
 
         {memories.length === 0 && (
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '60px',
             borderRadius: '12px',
             border: `1px solid ${colors.border}`,
-            textAlign: 'center'
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>📸</div>
-            <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: '20px', color: '#000', margin: '0 0 8px 0', fontWeight: '600' }}>
               No memories yet
             </h3>
-            <p style={{ color: colors.muted, margin: '0 0 24px 0' }}>
+            <p style={{ color: '#333', margin: '0 0 24px 0' }}>
               Start creating beautiful memories with your family
             </p>
             <button
@@ -736,16 +738,17 @@ const Memories: React.FC = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '32px',
             borderRadius: '12px',
             width: '100%',
             maxWidth: '600px',
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>
                 Create New Memory
               </h2>
               <button
@@ -868,7 +871,7 @@ const Memories: React.FC = () => {
                   <span style={{ color: colors.body, fontSize: '14px', marginBottom: '4px' }}>
                     Click to upload photos or videos
                   </span>
-                  <span style={{ color: colors.muted, fontSize: '12px' }}>
+                  <span style={{ color: '#666', fontSize: '12px' }}>
                     Supports: JPG, PNG, MP4, MOV (Max 10 files)
                   </span>
                   <input
@@ -891,7 +894,7 @@ const Memories: React.FC = () => {
                           style={{
                             padding: '6px 12px',
                             background: colors.primarySoft,
-                            color: colors.primary,
+                            color: '#000',
                             borderRadius: '6px',
                             fontSize: '12px',
                             display: 'flex',
@@ -968,16 +971,17 @@ const Memories: React.FC = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '32px',
             borderRadius: '12px',
             width: '100%',
             maxWidth: '600px',
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>
                 Edit Memory
               </h2>
               <button
@@ -1115,16 +1119,17 @@ const Memories: React.FC = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '32px',
             borderRadius: '12px',
             width: '100%',
             maxWidth: '600px',
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>
                 Comments
               </h2>
               <button
@@ -1147,11 +1152,11 @@ const Memories: React.FC = () => {
             {/* Memory Preview */}
             <div style={{
               padding: '16px',
-              background: colors.sectionBg,
+              background: '#f5f5f5',
               borderRadius: '8px',
               marginBottom: '24px'
             }}>
-              <h3 style={{ fontSize: '16px', color: colors.title, margin: '0 0 4px 0' }}>
+              <h3 style={{ fontSize: '16px', color: '#000', margin: '0 0 4px 0', fontWeight: '600' }}>
                 {selectedMemory.title}
               </h3>
               <p style={{ fontSize: '14px', color: colors.body, margin: 0 }}>
@@ -1173,7 +1178,7 @@ const Memories: React.FC = () => {
                       display: 'flex',
                       gap: '12px',
                       padding: '12px',
-                      background: colors.sectionBg,
+                      background: '#f5f5f5',
                       borderRadius: '8px',
                       marginBottom: '12px'
                     }}
@@ -1195,10 +1200,10 @@ const Memories: React.FC = () => {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: colors.title }}>
+                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#000' }}>
                           {comment.user?.firstName} {comment.user?.lastName}
                         </span>
-                        <span style={{ fontSize: '12px', color: colors.muted }}>
+                        <span style={{ fontSize: '12px', color: '#666' }}>
                           {new Date(comment.createdAt).toLocaleDateString()}
                         </span>
                       </div>
@@ -1209,7 +1214,7 @@ const Memories: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <p style={{ textAlign: 'center', color: colors.muted, padding: '20px 0' }}>
+                <p style={{ textAlign: 'center', color: '#666', padding: '20px 0' }}>
                   No comments yet. Be the first to comment!
                 </p>
               )}

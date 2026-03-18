@@ -185,7 +185,7 @@ const VideoCalls: React.FC = () => {
   return (
     <Layout>
       <div>
-        <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 24px 0' }}>
+        <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 24px 0' }}>
           Video Calls
         </h2>
 

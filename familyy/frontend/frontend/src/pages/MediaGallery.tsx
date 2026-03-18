@@ -315,8 +315,8 @@ const MediaGallery: React.FC = () => {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 8px 0' }}>Media Gallery</h2>
-            <p style={{ color: colors.muted, margin: 0 }}>Browse and manage your family photos and videos</p>
+            <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 8px 0', fontWeight: '600' }}>Media Gallery</h2>
+            <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>Browse and manage your family photos and videos</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button
@@ -385,8 +385,8 @@ const MediaGallery: React.FC = () => {
             onClick={() => setFilter('all')}
             style={{
               padding: '8px 20px',
-              background: filter === 'all' ? colors.primarySoft : 'transparent',
-              color: filter === 'all' ? colors.primary : colors.body,
+              background: filter === 'all' ? colors.primary : 'transparent',
+              color: filter === 'all' ? 'white' : colors.body,
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
@@ -400,8 +400,8 @@ const MediaGallery: React.FC = () => {
             onClick={() => setFilter('image')}
             style={{
               padding: '8px 20px',
-              background: filter === 'image' ? colors.primarySoft : 'transparent',
-              color: filter === 'image' ? colors.primary : colors.body,
+              background: filter === 'image' ? colors.primary : 'transparent',
+              color: filter === 'image' ? 'white' : colors.body,
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
@@ -418,8 +418,8 @@ const MediaGallery: React.FC = () => {
             onClick={() => setFilter('video')}
             style={{
               padding: '8px 20px',
-              background: filter === 'video' ? colors.primarySoft : 'transparent',
-              color: filter === 'video' ? colors.primary : colors.body,
+              background: filter === 'video' ? colors.primary : 'transparent',
+              color: filter === 'video' ? 'white' : colors.body,
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
@@ -477,7 +477,7 @@ const MediaGallery: React.FC = () => {
                     {(() => {
                       const imageUrl = getImageUrl(item);
                       if (!imageUrl) {
-                        return <span style={{ color: colors.muted, fontSize: '14px' }}>No image</span>;
+                        return <span style={{ color: '#333', fontSize: '14px' }}>No image</span>;
                       }
                       
                       return (
@@ -678,7 +678,7 @@ const MediaGallery: React.FC = () => {
                       </p>
                       <p style={{
                         fontSize: '11px',
-                        color: colors.muted,
+                        color: '#333',
                         margin: 0
                       }}>
                         {new Date(item.createdAt).toLocaleDateString()}
@@ -707,7 +707,7 @@ const MediaGallery: React.FC = () => {
                           cursor: 'pointer'
                         }}
                       >
-                        <FaDownload size={12} color={colors.primary} />
+                        <FaDownload size={12} color="#000" />
                       </button>
                       <button
                         onClick={() => handleDelete(item._id)}
@@ -748,17 +748,18 @@ const MediaGallery: React.FC = () => {
           </div>
         ) : (
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '60px',
             borderRadius: '12px',
             border: `1px solid ${colors.border}`,
-            textAlign: 'center'
+            textAlign: 'center',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>📷</div>
-            <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: '20px', color: '#000', margin: '0 0 8px 0', fontWeight: '600' }}>
               No media yet
             </h3>
-            <p style={{ color: colors.muted, margin: '0 0 24px 0' }}>
+            <p style={{ color: '#333', margin: '0 0 24px 0' }}>
               Upload photos and videos to start building your family gallery
             </p>
             <button
@@ -797,16 +798,17 @@ const MediaGallery: React.FC = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '32px',
             borderRadius: '12px',
             width: '100%',
             maxWidth: '600px',
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>
                 Upload Media
               </h2>
               <button
@@ -848,13 +850,13 @@ const MediaGallery: React.FC = () => {
               }}
               >
                 <FaUpload size={48} color={colors.primary} style={{ marginBottom: '16px' }} />
-                <span style={{ color: colors.title, fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                <span style={{ color: '#000', fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
                   Click to upload or drag and drop
                 </span>
-                <span style={{ color: colors.muted, fontSize: '14px' }}>
+                <span style={{ color: '#333', fontSize: '14px' }}>
                   Photos (JPG, PNG) or Videos (MP4, MOV)
                 </span>
-                <span style={{ color: colors.muted, fontSize: '12px', marginTop: '4px' }}>
+                <span style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
                   Maximum 10 files at once
                 </span>
                 <input
@@ -900,7 +902,7 @@ const MediaGallery: React.FC = () => {
                       <span style={{ flex: 1, fontSize: '13px', color: colors.body }}>
                         {file.name}
                       </span>
-                      <span style={{ fontSize: '12px', color: colors.muted }}>
+                      <span style={{ fontSize: '12px', color: '#333' }}>
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </span>
                     </div>
@@ -966,7 +968,7 @@ const MediaGallery: React.FC = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '32px',
             borderRadius: '12px',
             width: '100%',
@@ -975,7 +977,7 @@ const MediaGallery: React.FC = () => {
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '600' }}>
                 <span>☁️</span> Upload to AWS S3
               </h2>
               <button
@@ -1023,13 +1025,13 @@ const MediaGallery: React.FC = () => {
               }}
               >
                 <span style={{ fontSize: '48px', marginBottom: '16px' }}>☁️</span>
-                <span style={{ color: colors.title, fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
+                <span style={{ color: '#000', fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
                   Click to select files for AWS S3
                 </span>
-                <span style={{ color: colors.muted, fontSize: '14px' }}>
+                <span style={{ color: '#333', fontSize: '14px' }}>
                   Photos (JPG, PNG) or Videos (MP4, MOV)
                 </span>
-                <span style={{ color: colors.muted, fontSize: '12px', marginTop: '4px' }}>
+                <span style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
                   Maximum 10 files at once
                 </span>
                 <input
@@ -1075,7 +1077,7 @@ const MediaGallery: React.FC = () => {
                       <span style={{ flex: 1, fontSize: '13px', color: colors.body }}>
                         {file.name}
                       </span>
-                      <span style={{ fontSize: '12px', color: colors.muted }}>
+                      <span style={{ fontSize: '12px', color: '#333' }}>
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </span>
                     </div>
@@ -1279,7 +1281,7 @@ const MediaGallery: React.FC = () => {
                 }}
               />
             )}
-            <div style={{ marginTop: '16px', color: 'white', textAlign: 'center' }}>
+            <div style={{ marginTop: '16px', color: '#000', textAlign: 'center' }}>
               <p style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '600' }}>
                 {selectedMedia.memoryTitle || 'Untitled'}
               </p>

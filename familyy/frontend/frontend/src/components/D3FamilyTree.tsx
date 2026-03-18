@@ -100,6 +100,7 @@ export default function D3FamilyTree({
       const convertedPeople: Record<string, Person> = {};
       const seenIds = new Set<string>();
       const nameToIdMap = new Map<string, string>(); // Map name to first ID seen
+      const duplicateIdMap = new Map<string, string>(); // Map duplicate ID to correct ID
       
       Object.values(allPeople).forEach(person => {
         const name = `${person.firstName} ${person.lastName}`.trim();
@@ -130,7 +131,10 @@ export default function D3FamilyTree({
               console.log(`🔄 Replacing generated ID ${existingId} with real ID ${person.id} for ${name}`);
               delete convertedPeople[existingId];
               seenIds.delete(existingId);
+              duplicateIdMap.set(existingId, person.id); // Map old ID to new ID
             } else {
+              // Map this duplicate ID to the existing ID
+              duplicateIdMap.set(person.id, existingId);
               console.warn(`⚠️ Skipping duplicate person: ${name} (ID: ${person.id}, existing ID: ${existingId})`);
               return;
             }
@@ -150,6 +154,25 @@ export default function D3FamilyTree({
           gender: person.gender // Include gender for couple identification
         };
       });
+      
+      // Update relationships to use correct IDs (map duplicate IDs to correct ones)
+      if (duplicateIdMap.size > 0 && relationships && relationships.length > 0) {
+        console.log(`🔄 Mapping ${duplicateIdMap.size} duplicate IDs in relationships...`);
+        relationships.forEach(rel => {
+          // Map person1Id if it's a duplicate
+          if (duplicateIdMap.has(rel.person1Id)) {
+            const correctId = duplicateIdMap.get(rel.person1Id)!;
+            console.log(`🔄 Mapping relationship person1Id: ${rel.person1Id} -> ${correctId}`);
+            rel.person1Id = correctId;
+          }
+          // Map person2Id if it's a duplicate
+          if (duplicateIdMap.has(rel.person2Id)) {
+            const correctId = duplicateIdMap.get(rel.person2Id)!;
+            console.log(`🔄 Mapping relationship person2Id: ${rel.person2Id} -> ${correctId}`);
+            rel.person2Id = correctId;
+          }
+        });
+      }
       
       // Build children arrays from relationships
       if (relationships && relationships.length > 0) {

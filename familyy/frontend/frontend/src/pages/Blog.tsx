@@ -200,10 +200,10 @@ const Blog: React.FC = () => {
     <Layout>
       <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '32px', color: colors.title, marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '32px', color: 'white', marginBottom: '8px' }}>
             Family Blog
           </h1>
-          <p style={{ color: colors.muted }}>
+          <p style={{ color: 'white' }}>
             Share stories, updates, and messages with your family
           </p>
         </div>

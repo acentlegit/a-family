@@ -321,11 +321,11 @@ const Families: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}>
-                  <FaUsers size={20} color={colors.primary} />
+                  <FaUsers size={20} color="#000" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>{familyDetails.members.length}</h3>
-                  <p style={{ color: colors.muted, margin: 0, fontSize: '13px' }}>Members</p>
+                  <h3 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>{familyDetails.members.length}</h3>
+                  <p style={{ color: '#333', margin: 0, fontSize: '13px' }}>Members</p>
                 </div>
               </div>
             </div>
@@ -349,8 +349,8 @@ const Families: React.FC = () => {
                   <FaImages size={20} color={colors.accentGold} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>{familyDetails.memories.length}</h3>
-                  <p style={{ color: colors.muted, margin: 0, fontSize: '13px' }}>Memories</p>
+                  <h3 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>{familyDetails.memories.length}</h3>
+                  <p style={{ color: '#333', margin: 0, fontSize: '13px' }}>Memories</p>
                 </div>
               </div>
             </div>
@@ -374,8 +374,8 @@ const Families: React.FC = () => {
                   <FaCalendarAlt size={20} color="#F59E0B" />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>{familyDetails.events.length}</h3>
-                  <p style={{ color: colors.muted, margin: 0, fontSize: '13px' }}>Events</p>
+                  <h3 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>{familyDetails.events.length}</h3>
+                  <p style={{ color: '#333', margin: 0, fontSize: '13px' }}>Events</p>
                 </div>
               </div>
             </div>
@@ -390,7 +390,7 @@ const Families: React.FC = () => {
             marginBottom: '20px'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <h3 style={{ fontSize: '20px', color: colors.title, margin: 0 }}>Family Members</h3>
+              <h3 style={{ fontSize: '20px', color: '#000', margin: 0, fontWeight: '600' }}>Family Members</h3>
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <button
                   onClick={handleDownloadTemplate}
@@ -416,7 +416,7 @@ const Families: React.FC = () => {
                   style={{
                     padding: '8px 16px',
                     background: colors.primarySoft,
-                    color: colors.primary,
+                    color: '#000',
                     border: 'none',
                     borderRadius: '6px',
                     fontSize: '14px',
@@ -481,10 +481,10 @@ const Families: React.FC = () => {
                       {member.user?.firstName?.[0] || member.email?.[0] || 'M'}
                     </div>
                     <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: 0, color: colors.title, fontSize: '15px' }}>
+                      <h4 style={{ margin: 0, color: '#000', fontSize: '15px', fontWeight: '600' }}>
                         {member.user?.firstName || member.email}
                       </h4>
-                      <p style={{ margin: 0, color: colors.muted, fontSize: '13px' }}>
+                      <p style={{ margin: 0, color: '#333', fontSize: '13px' }}>
                         {member.role} {member.relationship ? `• ${member.relationship}` : ''}
                       </p>
                     </div>
@@ -493,7 +493,7 @@ const Families: React.FC = () => {
                       style={{
                         padding: '6px 12px',
                         background: colors.primarySoft,
-                        color: colors.primary,
+                        color: '#000',
                         border: 'none',
                         borderRadius: '6px',
                         fontSize: '12px',
@@ -509,13 +509,14 @@ const Families: React.FC = () => {
 
           {/* Recent Memories */}
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '24px',
             borderRadius: '12px',
             border: `1px solid ${colors.border}`,
-            marginBottom: '20px'
+            marginBottom: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 20px 0' }}>Recent Memories</h3>
+            <h3 style={{ fontSize: '20px', color: '#000', margin: '0 0 20px 0', fontWeight: '600' }}>Recent Memories</h3>
             {familyDetails.memories.length > 0 ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
                 {familyDetails.memories.slice(0, 6).map((memory: any) => (
@@ -524,7 +525,8 @@ const Families: React.FC = () => {
                     style={{
                       borderRadius: '8px',
                       overflow: 'hidden',
-                      background: colors.sectionBg
+                      background: '#fff',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
                     {memory.media?.[0] && (
@@ -536,8 +538,8 @@ const Families: React.FC = () => {
                       }} />
                     )}
                     <div style={{ padding: '12px' }}>
-                      <h4 style={{ margin: '0 0 4px 0', color: colors.title, fontSize: '14px' }}>{memory.title}</h4>
-                      <p style={{ margin: 0, color: colors.muted, fontSize: '12px' }}>
+                      <h4 style={{ margin: '0 0 4px 0', color: '#000', fontSize: '14px', fontWeight: '500' }}>{memory.title}</h4>
+                      <p style={{ margin: 0, color: '#666', fontSize: '12px' }}>
                         {new Date(memory.createdAt).toLocaleDateString()}
                       </p>
                     </div>
@@ -545,18 +547,19 @@ const Families: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p style={{ color: colors.muted, textAlign: 'center', padding: '20px 0' }}>No memories yet</p>
+              <p style={{ color: '#666', textAlign: 'center', padding: '20px 0' }}>No memories yet</p>
             )}
           </div>
 
           {/* Upcoming Events */}
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '24px',
             borderRadius: '12px',
-            border: `1px solid ${colors.border}`
+            border: `1px solid ${colors.border}`,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
-            <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 20px 0' }}>Upcoming Events</h3>
+            <h3 style={{ fontSize: '20px', color: '#000', margin: '0 0 20px 0', fontWeight: '600' }}>Upcoming Events</h3>
             {familyDetails.events.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {familyDetails.events.slice(0, 5).map((event: any) => (
@@ -564,23 +567,24 @@ const Families: React.FC = () => {
                     key={event._id}
                     style={{
                       padding: '16px',
-                      background: colors.sectionBg,
+                      background: '#fff',
                       borderRadius: '8px',
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   >
                     <div>
-                      <h4 style={{ margin: '0 0 4px 0', color: colors.title, fontSize: '15px' }}>{event.title}</h4>
-                      <p style={{ margin: 0, color: colors.muted, fontSize: '13px' }}>
+                      <h4 style={{ margin: '0 0 4px 0', color: '#000', fontSize: '15px', fontWeight: '500' }}>{event.title}</h4>
+                      <p style={{ margin: 0, color: '#666', fontSize: '13px' }}>
                         {new Date(event.date).toLocaleDateString()} • {event.location}
                       </p>
                     </div>
                     <div style={{
                       padding: '6px 12px',
                       background: colors.primarySoft,
-                      color: colors.primary,
+                      color: '#000',
                       borderRadius: '6px',
                       fontSize: '12px',
                       fontWeight: '600'
@@ -591,7 +595,7 @@ const Families: React.FC = () => {
                 ))}
               </div>
             ) : (
-              <p style={{ color: colors.muted, textAlign: 'center', padding: '20px 0' }}>No upcoming events</p>
+              <p style={{ color: '#666', textAlign: 'center', padding: '20px 0' }}>No upcoming events</p>
             )}
           </div>
         </div>
@@ -614,20 +618,21 @@ const Families: React.FC = () => {
       <div>
         {/* Header */}
         <div style={{ marginBottom: '24px' }}>
-          <h2 style={{ fontSize: '28px', color: colors.title, margin: '0 0 8px 0' }}>My Families</h2>
-          <p style={{ color: colors.muted, margin: 0 }}>View and manage all your family groups</p>
+          <h2 style={{ fontSize: '28px', color: 'white', margin: '0 0 8px 0', fontWeight: '600' }}>My Families</h2>
+          <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>View and manage all your family groups</p>
         </div>
 
         {/* Stats Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '30px' }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '24px',
             borderRadius: '12px',
             border: `1px solid ${colors.border}`,
             display: 'flex',
             alignItems: 'center',
-            gap: '16px'
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
             <div style={{
               width: '50px',
@@ -638,22 +643,23 @@ const Families: React.FC = () => {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <FaUsers size={24} color={colors.primary} />
+              <FaUsers size={24} color="#000" />
             </div>
             <div>
-              <h3 style={{ fontSize: '28px', color: colors.title, margin: '0 0 4px 0' }}>{families.length}</h3>
-              <p style={{ color: colors.muted, margin: 0, fontSize: '14px' }}>Families</p>
+              <h3 style={{ fontSize: '28px', color: '#000', margin: '0 0 4px 0', fontWeight: '600' }}>{families.length}</h3>
+              <p style={{ color: '#333', margin: 0, fontSize: '14px' }}>Families</p>
             </div>
           </div>
 
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '24px',
             borderRadius: '12px',
             border: `1px solid ${colors.border}`,
             display: 'flex',
             alignItems: 'center',
-            gap: '16px'
+            gap: '16px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
           }}>
             <div style={{
               width: '50px',
@@ -667,10 +673,10 @@ const Families: React.FC = () => {
               <FaUsers size={24} color={colors.accentGold} />
             </div>
             <div>
-              <h3 style={{ fontSize: '28px', color: colors.title, margin: '0 0 4px 0' }}>
+              <h3 style={{ fontSize: '28px', color: '#000', margin: '0 0 4px 0', fontWeight: '600' }}>
                 {families.reduce((acc, f) => acc + f.members.length, 0)}
               </h3>
-              <p style={{ color: colors.muted, margin: 0, fontSize: '14px' }}>Total Members</p>
+              <p style={{ color: '#333', margin: 0, fontSize: '14px' }}>Total Members</p>
             </div>
           </div>
         </div>
@@ -678,8 +684,8 @@ const Families: React.FC = () => {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 8px 0' }}>My Families</h2>
-            <p style={{ color: colors.muted, margin: 0 }}>Manage and view all your family groups</p>
+            <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 8px 0', fontWeight: '600' }}>My Families</h2>
+            <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>Manage and view all your family groups</p>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
@@ -731,12 +737,13 @@ const Families: React.FC = () => {
               key={family._id}
               onClick={() => handleFamilyClick(family)}
               style={{
-                background: colors.cardBg,
+                background: '#fff',
                 borderRadius: '12px',
                 border: `1px solid ${colors.border}`,
                 overflow: 'hidden',
                 cursor: 'pointer',
-                transition: 'transform 0.2s, box-shadow 0.2s'
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-4px)';
@@ -778,10 +785,10 @@ const Families: React.FC = () => {
                 backgroundPosition: 'center'
               }} />
               <div style={{ padding: '20px' }}>
-                <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 8px 0' }}>
+                <h3 style={{ fontSize: '20px', color: '#000', margin: '0 0 8px 0', fontWeight: '600' }}>
                   {family.name}
                 </h3>
-                <p style={{ color: colors.muted, fontSize: '14px', margin: '0 0 16px 0' }}>
+                <p style={{ color: '#333', fontSize: '14px', margin: '0 0 16px 0' }}>
                   {family.description || 'No description'}
                 </p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
@@ -806,10 +813,10 @@ const Families: React.FC = () => {
             textAlign: 'center'
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>👨‍👩‍👧‍👦</div>
-            <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: '20px', color: '#000', margin: '0 0 8px 0', fontWeight: '600' }}>
               No families yet
             </h3>
-            <p style={{ color: colors.muted, margin: '0 0 24px 0' }}>
+            <p style={{ color: '#666', margin: '0 0 24px 0' }}>
               Create your first family to get started
             </p>
           </div>
@@ -837,7 +844,7 @@ const Families: React.FC = () => {
             width: '100%',
             maxWidth: '500px'
           }}>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 24px 0' }}>
+            <h2 style={{ fontSize: '24px', color: '#000', margin: '0 0 24px 0', fontWeight: '600' }}>
               Create New Family
             </h2>
             <form onSubmit={handleCreateFamily}>
@@ -952,7 +959,7 @@ const Families: React.FC = () => {
             }}>
               🔐
             </div>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 12px 0' }}>
+            <h2 style={{ fontSize: '24px', color: '#000', margin: '0 0 12px 0', fontWeight: '600' }}>
               Family Created Successfully!
             </h2>
             <p style={{ color: colors.body, margin: '0 0 24px 0' }}>
@@ -964,7 +971,7 @@ const Families: React.FC = () => {
               borderRadius: '8px',
               marginBottom: '24px'
             }}>
-              <p style={{ color: colors.muted, fontSize: '14px', margin: '0 0 8px 0' }}>
+              <p style={{ color: '#333', fontSize: '14px', margin: '0 0 8px 0', fontWeight: '500' }}>
                 Family Passcode
               </p>
               <div style={{
@@ -1028,20 +1035,20 @@ const Families: React.FC = () => {
             maxWidth: '500px',
             width: '90%'
           }}>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 20px 0' }}>
+            <h2 style={{ fontSize: '24px', color: '#000', margin: '0 0 20px 0', fontWeight: '600' }}>
               Import Members from Excel
             </h2>
             
             <div style={{
-              background: colors.sectionBg,
+              background: '#f5f5f5',
               padding: '16px',
               borderRadius: '8px',
               marginBottom: '20px'
             }}>
-              <p style={{ color: colors.body, fontSize: '14px', margin: '0 0 12px 0' }}>
+              <p style={{ color: '#000', fontSize: '14px', margin: '0 0 12px 0', fontWeight: '600' }}>
                 <strong>Instructions:</strong>
               </p>
-              <ol style={{ color: colors.muted, fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
+              <ol style={{ color: '#333', fontSize: '13px', margin: 0, paddingLeft: '20px' }}>
                 <li>Download the Excel template</li>
                 <li>Fill in member information</li>
                 <li>Upload the completed file</li>

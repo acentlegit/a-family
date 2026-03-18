@@ -413,8 +413,8 @@ const Events: React.FC = () => {
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 8px 0' }}>Family Events</h2>
-            <p style={{ color: colors.muted, margin: 0 }}>Plan and manage family gatherings</p>
+            <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 8px 0' }}>Family Events</h2>
+            <p style={{ color: 'white', margin: 0 }}>Plan and manage family gatherings</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -559,7 +559,7 @@ const Events: React.FC = () => {
                       borderRadius: '8px',
                       marginBottom: '16px'
                     }}>
-                      <p style={{ fontSize: '12px', color: colors.muted, margin: '0 0 8px 0' }}>
+                      <p style={{ fontSize: '12px', color: 'white', margin: '0 0 8px 0' }}>
                         RSVP Status
                       </p>
                       <div style={{ display: 'flex', gap: '8px' }}>
@@ -695,10 +695,10 @@ const Events: React.FC = () => {
             textAlign: 'center'
           }}>
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>📅</div>
-            <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 8px 0' }}>
+            <h3 style={{ fontSize: '20px', color: 'white', margin: '0 0 8px 0' }}>
               No events yet
             </h3>
-            <p style={{ color: colors.muted, margin: 0 }}>
+            <p style={{ color: 'white', margin: 0 }}>
               Create your first family event using the "Create Event" button above
             </p>
           </div>
@@ -731,7 +731,7 @@ const Events: React.FC = () => {
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: 'white', margin: 0 }}>
                 Create New Event
               </h2>
               <button
@@ -780,7 +780,7 @@ const Events: React.FC = () => {
             overflow: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: 'white', margin: 0 }}>
                 Edit Event
               </h2>
               <button

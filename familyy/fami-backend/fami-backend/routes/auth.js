@@ -52,10 +52,10 @@ const storeRefreshToken = async (userId, refreshToken) => {
 router.post('/check-default-user', async (req, res) => {
   try {
     const { email } = req.body;
-    // Default common user email: arakala1926
-    const defaultEmail = process.env.DEFAULT_USER_EMAIL || 'arakala1926';
-    // Admin user email: chandra@acentle.com
-    const adminEmail = process.env.ADMIN_USER_EMAIL || 'chandra@acentle.com';
+    // Default common user email (from environment only)
+    const defaultEmail = process.env.DEFAULT_USER_EMAIL || '';
+    // Admin user email (from environment only)
+    const adminEmail = process.env.ADMIN_USER_EMAIL || '';
     
     if (email && email.toLowerCase() === defaultEmail.toLowerCase()) {
       return res.json({ isDefaultUser: true, isAdmin: false });
@@ -88,8 +88,8 @@ router.post('/register', [
 
     const { email, password, firstName, lastName } = req.body;
 
-    // Prevent registration with admin email
-    const adminEmail = process.env.ADMIN_USER_EMAIL || 'chandra@acentle.com';
+    // Prevent registration with admin email (from environment only)
+    const adminEmail = process.env.ADMIN_USER_EMAIL || '';
     if (email && email.toLowerCase() === adminEmail.toLowerCase()) {
       return res.status(403).json({ 
         success: false, 
@@ -97,8 +97,8 @@ router.post('/register', [
       });
     }
 
-    // Prevent registration with default user email (arakala1926)
-    const defaultEmail = process.env.DEFAULT_USER_EMAIL || 'arakala1926';
+    // Prevent registration with default user email (from environment)
+    const defaultEmail = process.env.DEFAULT_USER_EMAIL || '';
     if (email && defaultEmail && email.toLowerCase() === defaultEmail.toLowerCase()) {
       return res.status(403).json({ 
         success: false, 
@@ -340,19 +340,19 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    // Check if this is the super admin user (chandra@acentle.com)
-    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'chandra@acentle.com';
-    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'Admin$478';
+    // Check if this is the super admin user (from environment only)
+    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || '';
+    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || '';
     const isSuperAdminUser = superAdminEmail && email.toLowerCase() === superAdminEmail.toLowerCase();
     
-    // Check if this is the default common user (arakala1926)
-    const defaultUserEmail = process.env.DEFAULT_USER_EMAIL || 'arakala1926';
-    const defaultUserPassword = process.env.DEFAULT_USER_PASSWORD || 'a1926$2026';
+    // Check if this is the default common user (from environment only)
+    const defaultUserEmail = process.env.DEFAULT_USER_EMAIL || '';
+    const defaultUserPassword = process.env.DEFAULT_USER_PASSWORD || '';
     const isDefaultUser = defaultUserEmail && email.toLowerCase() === defaultUserEmail.toLowerCase();
     
-    // Check if this is the admin user (chandra@acentle.com)
-    const adminEmail = process.env.ADMIN_USER_EMAIL || 'chandra@acentle.com';
-    const adminPassword = process.env.ADMIN_USER_PASSWORD || 'Acentle$2026!#';
+    // Check if this is the admin user (from environment only)
+    const adminEmail = process.env.ADMIN_USER_EMAIL || '';
+    const adminPassword = process.env.ADMIN_USER_PASSWORD || '';
     const isAdminUser = adminEmail && email.toLowerCase() === adminEmail.toLowerCase() && !isSuperAdminUser;
 
     console.log('🔍 Login - Looking up user:', email);

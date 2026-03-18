@@ -41,8 +41,12 @@ app.use(rateLimit({
 ========================= */
 
 const PORT = process.env.PORT || 5000;
-const BASE_URL =
-  process.env.BASE_URL || "https://api.arakala.net";
+// BASE_URL is REQUIRED in production - no fallback
+const BASE_URL = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? (() => {
+  console.error('❌ BASE_URL environment variable is required in production!');
+  process.exit(1);
+  return '';
+})() : 'http://localhost:5000');
 
 // MongoDB URI - REQUIRED in production
 const MONGODB_URI = process.env.MONGODB_URI;
@@ -69,10 +73,10 @@ const allowedOrigins = [
   "https://www.fami.live",
   "https://fami.live",
   "http://fami.live",
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
   CLIENT_URL,
-  S3_BUCKET_URL
+  S3_BUCKET_URL,
+  // Only include localhost in development
+  ...(process.env.NODE_ENV !== 'production' ? ["http://localhost:3000", "http://127.0.0.1:3000"] : [])
 ].filter(Boolean); // Remove empty strings
 
 /* =========================
@@ -320,6 +324,10 @@ app.use("/api/super-admin", require("./routes/superAdmin"));
 app.use("/api/website-admin", require("./routes/websiteAdmin"));
 app.use("/api/bios", require("./routes/bios"));
 app.use("/api/blog", require("./routes/blog"));
+app.use("/api/timeline", require("./routes/timeline"));
+console.log("✅ Timeline routes loaded: /api/timeline");
+app.use("/api/migration", require("./routes/migration"));
+console.log("✅ Migration routes loaded: /api/migration");
 
 /* =========================
    HEALTH CHECK

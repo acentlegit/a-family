@@ -160,7 +160,9 @@ const Register: React.FC = () => {
                   border: `1px solid ${colors.border}`,
                   borderRadius: '8px',
                   fontSize: '15px',
-                  outline: 'none'
+                  outline: 'none',
+                  background: '#fff',
+                  color: '#000'
                 }}
               />
             </div>
@@ -180,7 +182,9 @@ const Register: React.FC = () => {
                   border: `1px solid ${colors.border}`,
                   borderRadius: '8px',
                   fontSize: '15px',
-                  outline: 'none'
+                  outline: 'none',
+                  background: '#fff',
+                  color: '#000'
                 }}
               />
             </div>

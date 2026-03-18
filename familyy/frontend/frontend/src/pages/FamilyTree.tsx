@@ -11,6 +11,7 @@ interface Person {
   id: string;
   firstName: string;
   lastName: string;
+  email?: string;
   gender: 'male' | 'female';
   dateOfBirth: string;
   avatar: string;
@@ -1033,10 +1034,27 @@ const FamilyTree: React.FC = () => {
     });
 
     // Build couple map (couple key -> children)
-    // A couple is identified by having children together
+    // IMPORTANT: First, identify ALL couples from spouse relationships (even without children)
     const coupleToChildrenMap: { [key: string]: string[] } = {};
     const coupleMap: { [key: string]: { parent1: string; parent2: string } } = {};
     
+    // Step 1: Identify all couples from spouse relationships (even if they have no children)
+    const processedCouples = new Set<string>();
+    Object.keys(spouseMap).forEach(personId => {
+      const spouseId = spouseMap[personId];
+      if (spouseId && personId < spouseId) { // Only process once per couple (use sorted order)
+        const coupleKey = `${personId}_${spouseId}`;
+        if (!processedCouples.has(coupleKey)) {
+          processedCouples.add(coupleKey);
+          if (!coupleToChildrenMap[coupleKey]) {
+            coupleToChildrenMap[coupleKey] = [];
+            coupleMap[coupleKey] = { parent1: personId, parent2: spouseId };
+          }
+        }
+      }
+    });
+    
+    // Step 2: Add children to couples based on parent-child relationships
     Object.keys(childToParentsMap).forEach(childId => {
       const parents = childToParentsMap[childId];
       if (parents.length >= 2) {
@@ -1048,7 +1066,9 @@ const FamilyTree: React.FC = () => {
           coupleToChildrenMap[coupleKey] = [];
           coupleMap[coupleKey] = { parent1, parent2 };
         }
-        coupleToChildrenMap[coupleKey].push(childId);
+        if (!coupleToChildrenMap[coupleKey].includes(childId)) {
+          coupleToChildrenMap[coupleKey].push(childId);
+        }
       } else if (parents.length === 1) {
         // Single parent - check if they have a spouse
         const parentId = parents[0];
@@ -1061,7 +1081,9 @@ const FamilyTree: React.FC = () => {
             coupleToChildrenMap[coupleKey] = [];
             coupleMap[coupleKey] = { parent1: p1, parent2: p2 };
           }
-          coupleToChildrenMap[coupleKey].push(childId);
+          if (!coupleToChildrenMap[coupleKey].includes(childId)) {
+            coupleToChildrenMap[coupleKey].push(childId);
+          }
         } else {
           // Single parent without spouse
           const coupleKey = `single_${parentId}`;
@@ -1069,7 +1091,9 @@ const FamilyTree: React.FC = () => {
             coupleToChildrenMap[coupleKey] = [];
             coupleMap[coupleKey] = { parent1: parentId, parent2: '' };
           }
-          coupleToChildrenMap[coupleKey].push(childId);
+          if (!coupleToChildrenMap[coupleKey].includes(childId)) {
+            coupleToChildrenMap[coupleKey].push(childId);
+          }
         }
       }
     });
@@ -2156,21 +2180,326 @@ const FamilyTree: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  const importTree = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const importTree = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const imported = JSON.parse(event.target?.result as string);
-          setFamilyTree(imported);
-          alert('Family tree imported successfully!');
-        } catch (error) {
-          alert('Error importing file. Please check the file format.');
-        }
-      };
-      reader.readAsText(file);
+    if (!file) return;
+
+    if (!selectedFamilyId) {
+      alert('Please select a family first before importing.');
+      e.target.value = '';
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        
+        // Validate imported data structure
+        if (!imported.people || typeof imported.people !== 'object') {
+          alert('Invalid file format. Expected format: { people: {...}, relationships: [...] }');
+          e.target.value = '';
+          return;
+        }
+
+        // Show loading message
+        const loadingMessage = 'Importing family tree... This may take a moment.';
+        alert(loadingMessage);
+
+        // Step 0: Fetch existing members to avoid duplicates
+        let existingMembers: any[] = [];
+        try {
+          const existingResponse = await api.get(`/members/${selectedFamilyId}`);
+          if (existingResponse.data.success && existingResponse.data.data) {
+            existingMembers = Array.isArray(existingResponse.data.data) 
+              ? existingResponse.data.data 
+              : [existingResponse.data.data];
+          }
+        } catch (error) {
+          console.warn('Could not fetch existing members:', error);
+        }
+
+        // Create a map of existing members by name (firstName + lastName)
+        const existingMembersMap: { [key: string]: string } = {};
+        existingMembers.forEach((member: any) => {
+          const fullName = `${member.firstName || ''} ${member.lastName || ''}`.trim().toLowerCase();
+          if (fullName) {
+            existingMembersMap[fullName] = member._id || member.id;
+          }
+        });
+
+        // Step 1: Convert people to members and create them (or use existing)
+        const people = imported.people;
+        const relationships = imported.relationships || [];
+        const personIdToMemberId: { [key: string]: string } = {};
+        const createdMembers: any[] = [];
+        const updatedMembers: any[] = [];
+        const errors: string[] = [];
+
+        // Sort people by generation (parents first, then children)
+        const sortedPeople = Object.values(people).sort((a: any, b: any) => {
+          const genA = a.generation || 0;
+          const genB = b.generation || 0;
+          return genA - genB;
+        });
+
+        // Helper function to map relationship to valid enum value
+        const mapRelationship = (rel: string | undefined): string => {
+          if (!rel) return 'Other';
+          const relLower = rel.toLowerCase().trim();
+          const relationshipMap: { [key: string]: string } = {
+            'great grandfather': 'Great Grandfather',
+            'great grandmother': 'Great Grandmother',
+            'grandfather': 'Grandfather',
+            'grandmother': 'Grandmother',
+            'father': 'Father',
+            'mother': 'Mother',
+            'uncle': 'Uncle',
+            'aunt': 'Aunt',
+            'son': 'Son',
+            'son-in-law': 'Son', // Map son-in-law to Son
+            'daughter': 'Daughter',
+            'daughter-in-law': 'Daughter', // Map daughter-in-law to Daughter
+            'brother': 'Brother',
+            'sister': 'Sister',
+            'cousin': 'Cousin',
+            'grandson': 'Grandson',
+            'granddaughter': 'Granddaughter',
+            'nephew': 'Nephew',
+            'niece': 'Niece',
+            'spouse': 'Spouse',
+            'wife': 'Spouse', // Map wife to Spouse
+            'husband': 'Spouse', // Map husband to Spouse
+            'other': 'Other'
+          };
+          return relationshipMap[relLower] || 'Other';
+        };
+
+        // Helper function to format date
+        const formatDate = (dateStr: string | null | undefined): string | null => {
+          if (!dateStr) return null;
+          try {
+            // If it's already a valid date string, return as is
+            const date = new Date(dateStr);
+            if (isNaN(date.getTime())) return null;
+            return date.toISOString();
+          } catch {
+            return null;
+          }
+        };
+
+        // Create members one by one (or use existing)
+        for (const person of sortedPeople as Person[]) {
+          try {
+            // Validate required fields
+            if (!person.firstName || person.firstName.trim() === '') {
+              errors.push(`Skipped member: Missing first name for person ID ${person.id}`);
+              continue;
+            }
+
+            const firstName = person.firstName.trim();
+            const lastName = person.lastName ? person.lastName.trim() : '';
+            const fullName = `${firstName} ${lastName}`.trim().toLowerCase();
+            
+            // Check if member already exists
+            let memberId: string | null = null;
+            if (existingMembersMap[fullName]) {
+              // Use existing member
+              memberId = existingMembersMap[fullName];
+              if (memberId) {
+                personIdToMemberId[person.id] = memberId;
+                updatedMembers.push({ id: memberId, name: `${firstName} ${lastName}` });
+                console.log(`✅ Using existing member: ${firstName} ${lastName} (ID: ${memberId})`);
+              } else {
+                errors.push(`Failed to get existing member ID for: ${firstName} ${lastName}`);
+                continue;
+              }
+            } else {
+              // Create new member
+              const memberData: any = {
+                firstName,
+                lastName,
+                email: person.email ? person.email.trim() : '',
+                gender: person.gender === 'male' ? 'Male' : person.gender === 'female' ? 'Female' : 'Other',
+                dateOfBirth: formatDate(person.dateOfBirth),
+                relationship: mapRelationship(person.relationship),
+                generation: person.generation || 0,
+                role: 'Member'
+              };
+
+              const response = await api.post(`/members/${selectedFamilyId}`, memberData);
+              
+              if (response.data.success && response.data.data) {
+                memberId = response.data.data._id || response.data.data.id;
+                personIdToMemberId[person.id] = memberId;
+                createdMembers.push(response.data.data);
+                // Add to existing map to avoid duplicates in same import
+                existingMembersMap[fullName] = memberId;
+              } else {
+                const personName = `${firstName} ${lastName}`.trim() || 'Unknown';
+                errors.push(`Failed to create member: ${personName} - Invalid response from server`);
+              }
+            }
+          } catch (error: any) {
+            const personName = `${person.firstName} ${person.lastName}`.trim() || 'Unknown';
+            const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
+            errors.push(`Failed to create/update member: ${personName} - ${errorMessage}`);
+            console.error(`Error processing member ${personName}:`, error);
+            if (error.response?.data) {
+              console.error(`Error response data:`, error.response.data);
+            }
+          }
+        }
+
+        // Step 2: Update relationships (father, mother, spouse)
+        // First pass: collect all relationship data
+        const relationshipUpdates: { [memberId: string]: { fatherId?: string; motherId?: string; spouseId?: string } } = {};
+
+        for (const personId in people) {
+          const person = people[personId];
+          const memberId = personIdToMemberId[personId];
+          
+          if (!memberId) continue;
+
+          // Find spouse relationship
+          const spouseRelationship = relationships.find(
+            r => (r.type === 'spouse' && r.person1Id === personId) || 
+                 (r.type === 'spouse' && r.person2Id === personId)
+          );
+          
+          let spouseId = null;
+          if (spouseRelationship) {
+            const spousePersonId = spouseRelationship.person1Id === personId 
+              ? spouseRelationship.person2Id 
+              : spouseRelationship.person1Id;
+            spouseId = personIdToMemberId[spousePersonId] || null;
+          }
+
+          // Find parent-child relationships to determine father and mother
+          const parentChildRels = relationships.filter(
+            r => r.type === 'parent-child' && r.person2Id === personId
+          );
+          
+          let fatherId = null;
+          let motherId = null;
+          
+          for (const rel of parentChildRels) {
+            const parentPerson = people[rel.person1Id];
+            if (parentPerson) {
+              if (parentPerson.gender === 'male') {
+                fatherId = personIdToMemberId[rel.person1Id] || null;
+              } else if (parentPerson.gender === 'female') {
+                motherId = personIdToMemberId[rel.person1Id] || null;
+              }
+            }
+          }
+
+          // Store relationship updates
+          if (fatherId || motherId || spouseId) {
+            relationshipUpdates[memberId] = {};
+            if (fatherId) relationshipUpdates[memberId].fatherId = fatherId;
+            if (motherId) relationshipUpdates[memberId].motherId = motherId;
+            if (spouseId) relationshipUpdates[memberId].spouseId = spouseId;
+          }
+        }
+
+        // Second pass: apply relationship updates
+        for (const memberId in relationshipUpdates) {
+          try {
+            const updateData = relationshipUpdates[memberId];
+            
+            // Validate that all referenced members exist in our mapping
+            // If they're in personIdToMemberId values, they should be valid
+            const allValidMemberIds = new Set(Object.values(personIdToMemberId));
+            const invalidRefs: string[] = [];
+            
+            if (updateData.fatherId && !allValidMemberIds.has(updateData.fatherId)) {
+              invalidRefs.push(`father (${updateData.fatherId})`);
+            }
+            if (updateData.motherId && !allValidMemberIds.has(updateData.motherId)) {
+              invalidRefs.push(`mother (${updateData.motherId})`);
+            }
+            if (updateData.spouseId && !allValidMemberIds.has(updateData.spouseId)) {
+              invalidRefs.push(`spouse (${updateData.spouseId})`);
+            }
+            
+            if (invalidRefs.length > 0) {
+              const personId = Object.keys(personIdToMemberId).find(id => personIdToMemberId[id] === memberId);
+              const person = personId ? people[personId] : null;
+              const personName = person ? `${person.firstName} ${person.lastName}`.trim() || 'Unknown' : 'Unknown';
+              console.warn(`⚠️ Skipping relationship update for ${personName}: Invalid references - ${invalidRefs.join(', ')}`);
+              // Don't add to errors - this is expected when some members weren't created
+              continue;
+            }
+            
+            await api.put(`/members/${selectedFamilyId}/${memberId}`, updateData);
+            
+            // Handle bidirectional spouse relationship
+            if (updateData.spouseId) {
+              try {
+                // Update the spouse's spouse field to point back
+                await api.put(`/members/${selectedFamilyId}/${updateData.spouseId}`, { spouseId: memberId });
+              } catch (spouseError: any) {
+                const personId = Object.keys(personIdToMemberId).find(id => personIdToMemberId[id] === memberId);
+                const person = personId ? people[personId] : null;
+                const personName = person ? `${person.firstName} ${person.lastName}`.trim() || 'Unknown' : 'Unknown';
+                console.warn(`⚠️ Failed to update bidirectional spouse relationship for ${personName}:`, spouseError);
+                // Don't add to errors - this is a non-critical update
+              }
+            }
+          } catch (error: any) {
+            const personId = Object.keys(personIdToMemberId).find(id => personIdToMemberId[id] === memberId);
+            const person = personId ? people[personId] : null;
+            const personName = person ? `${person.firstName} ${person.lastName}`.trim() || 'Unknown' : 'Unknown';
+            const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
+            errors.push(`Failed to update relationships for: ${personName} - ${errorMessage}`);
+            console.error(`Error updating relationships for ${personName}:`, error);
+            if (error.response?.data) {
+              console.error(`Error response data:`, error.response.data);
+            }
+          }
+        }
+
+        // Step 3: Reload the tree from database
+        await fetchMembersAndBuildTree();
+
+        // Step 4: Show success/error message
+        const successCount = createdMembers.length;
+        const updatedCount = updatedMembers.length;
+        const errorCount = errors.length;
+        
+        if (errorCount === 0) {
+          let message = `✅ Family tree imported successfully!\n\n`;
+          if (successCount > 0) {
+            message += `Created: ${successCount} new member(s)\n`;
+          }
+          if (updatedCount > 0) {
+            message += `Used existing: ${updatedCount} member(s)\n`;
+          }
+          message += `Total processed: ${successCount + updatedCount} member(s)`;
+          alert(message);
+        } else {
+          let message = `⚠️ Import completed with some errors:\n\n`;
+          if (successCount > 0) {
+            message += `✅ Created: ${successCount} new member(s)\n`;
+          }
+          if (updatedCount > 0) {
+            message += `✅ Used existing: ${updatedCount} member(s)\n`;
+          }
+          message += `❌ Errors: ${errorCount}\n\nCheck console for details.`;
+          alert(message);
+          console.error('Import errors:', errors);
+        }
+
+        // Clear file input
+        e.target.value = '';
+      } catch (error: any) {
+        console.error('Error importing file:', error);
+        alert(`Error importing file: ${error.message}\n\nPlease check the file format.`);
+        e.target.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleDownloadTemplate = async () => {

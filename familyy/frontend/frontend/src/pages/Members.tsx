@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout';
 import { colors } from '../styles/colors';
 import api, { getApiUrl } from '../config/api';
-import { FaPlus, FaTrash, FaEdit, FaUser, FaTimes, FaDownload } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaEdit, FaUser, FaTimes, FaDownload, FaUpload } from 'react-icons/fa';
 import { FiImage } from 'react-icons/fi';
 
 const Members: React.FC = () => {
@@ -49,6 +49,7 @@ const Members: React.FC = () => {
   });
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
+  const excelImportRef = useRef<HTMLInputElement>(null);
 
   const relationshipOptions = [
     'Great Grandfather', 'Great Grandmother',
@@ -375,6 +376,38 @@ const Members: React.FC = () => {
     }
   };
 
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!selectedFamilyId) {
+      alert('Please select a family first');
+      e.target.value = '';
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await api.post(`/families/${selectedFamilyId}/import-excel`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      alert(response.data.message || 'Members imported successfully!');
+      // Refresh members after import
+      if (selectedFamilyId) {
+        fetchMembers(selectedFamilyId);
+      }
+    } catch (error: any) {
+      console.error('Error importing Excel:', error);
+      alert(error.response?.data?.message || 'Error importing Excel file');
+    }
+
+    // Reset file input
+    e.target.value = '';
+  };
+
 
   if (loading && !selectedFamilyId) {
     return (
@@ -396,10 +429,29 @@ const Members: React.FC = () => {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>
-            <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 8px 0' }}>Manage Members</h2>
-            <p style={{ color: colors.muted, margin: 0 }}>Add and manage family members</p>
+            <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 8px 0', fontWeight: '600' }}>Manage Members</h2>
+            <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>Add and manage family members</p>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => excelImportRef.current?.click()}
+              disabled={!selectedFamilyId}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 20px',
+                background: !selectedFamilyId ? colors.muted : '#3B82F6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: '600',
+                cursor: !selectedFamilyId ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <FaUpload /> Import Excel
+            </button>
             <button
               onClick={handleExportMembers}
               disabled={!selectedFamilyId || members.length === 0}
@@ -489,10 +541,11 @@ const Members: React.FC = () => {
               <div
                 key={member._id}
                 style={{
-                  background: colors.cardBg,
+                  background: '#fff',
                   borderRadius: '12px',
                   border: `1px solid ${colors.border}`,
-                  overflow: 'hidden'
+                  overflow: 'hidden',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                 }}
               >
                 {/* Photo */}
@@ -595,14 +648,14 @@ const Members: React.FC = () => {
 
                 {/* Info */}
                 <div style={{ padding: '16px' }}>
-                  <h3 style={{ fontSize: '18px', color: colors.title, margin: '0 0 4px 0' }}>
+                  <h3 style={{ fontSize: '18px', color: '#000', margin: '0 0 4px 0', fontWeight: '600' }}>
                     {member.firstName} {member.lastName || ''}
                   </h3>
-                  <p style={{ fontSize: '14px', color: colors.muted, margin: '0 0 8px 0' }}>
+                  <p style={{ fontSize: '14px', color: '#333', margin: '0 0 8px 0' }}>
                     {member.relationship} • Gen {member.generation + 1}
                   </p>
                   {member.email && (
-                    <p style={{ fontSize: '13px', color: colors.body, margin: '0 0 12px 0' }}>
+                    <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px 0' }}>
                       {member.email}
                     </p>
                   )}
@@ -615,7 +668,7 @@ const Members: React.FC = () => {
                       borderRadius: '6px',
                       marginBottom: '12px',
                       fontSize: '12px',
-                      color: colors.body
+                      color: '#333'
                     }}>
                       {member.father && <div>👨 Father: {member.father.firstName}</div>}
                       {member.mother && <div>👩 Mother: {member.mother.firstName}</div>}
@@ -682,7 +735,7 @@ const Members: React.FC = () => {
             <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 8px 0' }}>
               No members yet
             </h3>
-            <p style={{ color: colors.muted, margin: '0 0 24px 0' }}>
+            <p style={{ color: colors.body, margin: '0 0 24px 0' }}>
               Add your first family member to get started
             </p>
           </div>
@@ -718,7 +771,7 @@ const Members: React.FC = () => {
             overflowY: 'auto'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>
                 Add Members
               </h2>
               <button
@@ -728,7 +781,7 @@ const Members: React.FC = () => {
                   border: 'none',
                   fontSize: '24px',
                   cursor: 'pointer',
-                  color: colors.muted
+                  color: '#000'
                 }}
               >
                 <FaTimes />
@@ -755,7 +808,7 @@ const Members: React.FC = () => {
                     borderRadius: '8px',
                     border: `2px solid ${bulkMembers[index]?.firstName || bulkMembers[index]?.lastName ? colors.primary : colors.border}`
                   }}>
-                    <h4 style={{ margin: '0 0 16px 0', color: colors.title }}>
+                    <h4 style={{ margin: '0 0 16px 0', color: '#000', fontWeight: '600' }}>
                       Member {index + 1}
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr', gap: '12px' }}>
@@ -784,7 +837,9 @@ const Members: React.FC = () => {
                             padding: '10px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            background: '#fff',
+                            color: '#000'
                           }}
                         />
                       </div>
@@ -813,7 +868,9 @@ const Members: React.FC = () => {
                             padding: '10px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            background: '#fff',
+                            color: '#000'
                           }}
                         />
                       </div>
@@ -850,7 +907,9 @@ const Members: React.FC = () => {
                             padding: '10px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            background: '#fff',
+                            color: '#000'
                           }}
                         />
                       </div>
@@ -885,7 +944,9 @@ const Members: React.FC = () => {
                             padding: '10px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            background: '#fff',
+                            color: '#000'
                           }}
                         >
                           <option value="Male">Male</option>
@@ -923,7 +984,9 @@ const Members: React.FC = () => {
                             padding: '10px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            background: '#fff',
+                            color: '#000'
                           }}
                         >
                           {relationshipOptions.map(rel => (
@@ -1022,7 +1085,9 @@ const Members: React.FC = () => {
                             padding: '10px',
                             border: `1px solid ${colors.border}`,
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            background: '#fff',
+                            color: '#000'
                           }}
                         >
                           <option value="">Select a relative...</option>
@@ -1095,16 +1160,17 @@ const Members: React.FC = () => {
           padding: '20px'
         }}>
           <div style={{
-            background: colors.cardBg,
+            background: '#fff',
             padding: '32px',
             borderRadius: '12px',
             width: '100%',
             maxWidth: '600px',
             maxHeight: '90vh',
-            overflow: 'auto'
+            overflow: 'auto',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-              <h2 style={{ fontSize: '24px', color: colors.title, margin: 0 }}>
+              <h2 style={{ fontSize: '24px', color: '#000', margin: 0, fontWeight: '600' }}>
                 Edit Member
               </h2>
               <button
@@ -1149,7 +1215,7 @@ const Members: React.FC = () => {
                     style={{ display: 'none' }}
                   />
                 </label>
-                <p style={{ fontSize: '12px', color: colors.muted, marginTop: '8px' }}>
+                <p style={{ fontSize: '12px', color: '#333', marginTop: '8px' }}>
                   Click to upload photo
                 </p>
               </div>
@@ -1396,6 +1462,15 @@ const Members: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Hidden file input for Excel import */}
+      <input
+        type="file"
+        ref={excelImportRef}
+        accept=".xlsx,.xls"
+        style={{ display: 'none' }}
+        onChange={handleImportExcel}
+      />
     </Layout>
   );
 };

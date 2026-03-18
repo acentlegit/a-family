@@ -61,7 +61,7 @@ const Notifications: React.FC = () => {
   return (
     <Layout selectedFamily={families.find(f => f._id === selectedFamilyId)}>
       <div>
-        <h2 style={{ fontSize: '24px', color: colors.title, margin: '0 0 24px 0' }}>
+        <h2 style={{ fontSize: '24px', color: 'white', margin: '0 0 24px 0' }}>
           Notifications & Emails
         </h2>
 
@@ -223,7 +223,9 @@ const Notifications: React.FC = () => {
                       border: `1px solid ${colors.border}`,
                       borderRadius: '8px',
                       fontSize: '15px',
-                      outline: 'none'
+                      outline: 'none',
+                      background: '#fff',
+                      color: '#000'
                     }}
                   />
                 </div>
@@ -246,7 +248,9 @@ const Notifications: React.FC = () => {
                       fontSize: '15px',
                       outline: 'none',
                       resize: 'vertical',
-                      fontFamily: 'inherit'
+                      fontFamily: 'inherit',
+                      background: '#fff',
+                      color: '#000'
                     }}
                   />
                 </div>

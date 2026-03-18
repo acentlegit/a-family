@@ -59,23 +59,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      console.log('🔍 AuthContext - Attempting login for:', email);
-      console.log('🔍 AuthContext - API Base:', process.env.REACT_APP_API_BASE || 'Not configured');
+      // Attempting login
       
       // Make request with explicit withCredentials (already set globally, but being explicit)
       const response = await api.post('/auth/login', { email, password }, {
         withCredentials: true
       });
       
-      console.log('✅ AuthContext - Login API response received:', response.data);
-      console.log('✅ AuthContext - Response status:', response.status);
-      
-      // Safely stringify response for logging
-      try {
-        console.log('✅ AuthContext - Full response:', JSON.stringify(response.data, null, 2));
-      } catch (e) {
-        console.log('✅ AuthContext - Full response (could not stringify):', response.data);
-      }
+      // Login API response received
       
       // Check actual backend response structure and status
       if (response.status === 200 || response.status === 201) {
@@ -113,40 +104,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (!user && response.data.data.user) user = response.data.data.user;
         }
         
-        // Log what we found (safely)
-        console.log('🔍 AuthContext - Extracted token:', token ? 'Found' : 'Missing');
-        console.log('🔍 AuthContext - Extracted user:', user ? 'Found' : 'Missing');
-        
-        // Safely log response keys
-        try {
-          if (response.data && typeof response.data === 'object') {
-            console.log('🔍 AuthContext - Response keys:', Object.keys(response.data));
-          }
-        } catch (e) {
-          console.warn('⚠️  Could not log response keys');
-        }
-
         // Only validate if we have the essential data
         if (!token) {
-          console.error('❌ AuthContext - Token missing in response:', response.data);
           throw new Error('Invalid login response: missing token');
         }
         
         if (!user) {
-          console.error('❌ AuthContext - User missing in response:', response.data);
           throw new Error('Invalid login response: missing user data');
         }
-
-        console.log('🔍 AuthContext - User object:', user);
-        console.log('🔍 AuthContext - User role:', user.role);
-        console.log('🔍 AuthContext - isSuperAdmin:', user.isSuperAdmin);
 
         // Save to localStorage first (safely)
         try {
           localStorage.setItem('token', token);
           localStorage.setItem('user', JSON.stringify(user));
         } catch (storageError) {
-          console.error('❌ AuthContext - Error saving to localStorage:', storageError);
           throw new Error('Failed to save authentication data');
         }
 
@@ -164,26 +135,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     } catch (error: any) {
       setLoading(false);
-      
-      // Safe error logging
-      try {
-        console.error('❌ AuthContext - Login error:', error);
-        console.error('❌ AuthContext - Error message:', error?.message || 'Unknown error');
-        
-        if (error?.response) {
-          console.error('❌ AuthContext - Error status:', error.response.status);
-          console.error('❌ AuthContext - Error response data:', error.response.data);
-        } else {
-          console.error('❌ AuthContext - No response object (network error)');
-        }
-        
-        if (error?.code) {
-          console.error('❌ AuthContext - Error code:', error.code);
-        }
-      } catch (logError) {
-        console.error('❌ AuthContext - Error logging failed:', logError);
-      }
-      
       // Re-throw so Login component can handle it
       throw error;
     }

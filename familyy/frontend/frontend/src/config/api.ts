@@ -17,8 +17,17 @@ const getApiBase = (): string => {
     return apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
   }
   
-  // No hardcoded fallback - environment variable is required
-  console.error('❌ REACT_APP_API_BASE environment variable is required!');
+  // No hardcoded fallback for production - environment variable is required
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ REACT_APP_API_BASE environment variable is required in production!');
+    return '';
+  }
+  
+  // Development fallback only (silent - no console warnings)
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  }
+  
   // Return empty string to fail gracefully - will cause API calls to fail with clear error
   return '';
 };
@@ -65,10 +74,7 @@ api.interceptors.request.use(
     }
     
     const fullUrl = (config.baseURL || '') + (config.url || '');
-    console.log('🔍 API Request:', config.method?.toUpperCase(), fullUrl);
-    if (config.data instanceof FormData) {
-      console.log('🔍 FormData detected - Content-Type will be set automatically');
-    }
+    // API request being made
     
     // Ensure credentials are sent (required for CORS with credentials)
     config.withCredentials = true;
@@ -94,7 +100,6 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('❌ API Request Error:', error);
     return Promise.reject(error);
   }
 );
@@ -102,93 +107,41 @@ api.interceptors.request.use(
 // Handle response errors
 api.interceptors.response.use(
   (response) => {
-    console.log('✅ API Response:', response.config.method?.toUpperCase(), response.config.url, response.status);
-    // Log response details safely
-    try {
-      console.log('✅ Response headers:', {
-        'content-type': response.headers['content-type'] || 'not set',
-        'content-length': response.headers['content-length'] || 'not set'
-      });
-      console.log('✅ Response data type:', typeof response.data);
-      
-      // Safely get response data keys
-      if (response.data && typeof response.data === 'object') {
-        console.log('✅ Response data keys:', Object.keys(response.data));
-      } else if (response.data === null || response.data === undefined) {
-        console.log('✅ Response data: null or undefined');
-      } else {
-        console.log('✅ Response data:', typeof response.data);
-      }
-    } catch (logError) {
-      console.warn('⚠️  Error logging response details:', logError);
-    }
-    
     // Ensure response data is properly parsed (axios should handle this automatically)
     // But double-check to ensure it's an object, not a string
     if (typeof response.data === 'string' && response.data.trim()) {
       try {
         const parsed = JSON.parse(response.data);
         response.data = parsed;
-        console.log('✅ Parsed JSON response data from string');
       } catch (e) {
-        console.warn('⚠️  Response data is string but not valid JSON:', response.data.substring(0, 100));
         // Keep original string data if parsing fails - don't break the response
       }
-    }
-    
-    // Verify response.data is an object (not null, not undefined, not primitive)
-    if (response.data && typeof response.data === 'object' && !Array.isArray(response.data)) {
-      console.log('✅ Response data is valid object');
-    } else if (response.data === null) {
-      console.warn('⚠️  Response data is null');
-    } else if (response.data === undefined) {
-      console.warn('⚠️  Response data is undefined');
-    } else {
-      console.log('✅ Response data type:', typeof response.data, Array.isArray(response.data) ? '(array)' : '');
     }
     
     return response;
   },
   async (error) => {
-    console.error('❌ API Error:', error.config?.method?.toUpperCase(), error.config?.url);
-    console.error('❌ Error status:', error.response?.status);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error response data:', error.response?.data);
-    
     // Handle network errors
     if (error.code === 'ECONNABORTED' || error.message === 'Network Error' || !error.response) {
-      console.error('❌ Network error - backend may not be running');
       return Promise.reject(new Error('Unable to connect to server. Please check if the backend is running.'));
     }
     
-    // Auto-logout on 401, but only if not already on login page
+    // Handle 401 errors - don't auto-redirect on login page
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
       const errorMessage = error.response?.data?.message || '';
       
-      console.log('❌ 401 Unauthorized:', errorMessage);
-      console.log('❌ Current path:', currentPath);
-      
-      // If token expired, try to refresh or redirect to login
-      if (errorMessage.includes('expired') || errorMessage.includes('Invalid token')) {
-        console.log('⚠️  Token expired or invalid - user needs to login again');
-        // Clear tokens and redirect to login
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        if (currentPath !== '/login') {
+      // Only clear tokens and redirect if NOT on login/register pages
+      // This prevents redirect loops and allows login errors to display
+      if (currentPath !== '/login' && currentPath !== '/register' && !currentPath.includes('/super-admin')) {
+        // If token expired or invalid, clear and redirect
+        if (errorMessage.includes('expired') || errorMessage.includes('Invalid token') || errorMessage.includes('Not authorized')) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
           window.location.href = '/login';
         }
-      } else if (currentPath !== '/login' && !currentPath.includes('/super-admin')) {
-        console.log('❌ 401 Unauthorized - clearing auth and redirecting to login');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        if (currentPath !== '/login') {
-          window.location.href = '/login';
-        }
-      } else {
-        console.log('⚠️  401 on protected route, but already on login or super-admin page');
-        console.log('⚠️  Error message:', errorMessage);
       }
+      // If on login page, let the error display (don't redirect)
     }
     return Promise.reject(error);
   }

@@ -198,7 +198,7 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
                   padding: '8px'
                 }}
               >
-                <FaBell size={20} color={showNotifications ? colors.primary : colors.muted} />
+                <FaBell size={20} color="white" />
                 {unreadCount > 0 && (
                   <span style={{
                     position: 'absolute',
@@ -428,10 +428,10 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
                       }}
                     />
                   ) : (
-                    <FaUser size={35} color={colors.primary} />
+                    <FaUser size={35} color="white" />
                   );
                 })()}
-                <span className="hidden md:inline text-gray-800 font-medium">
+                <span className="hidden md:inline text-white font-medium">
                   {user?.firstName} {user?.lastName}
                 </span>
               </button>

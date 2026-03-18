@@ -264,7 +264,9 @@ const Messages: React.FC = () => {
                 border: `1px solid ${colors.border}`,
                 borderRadius: '8px',
                 fontSize: '16px',
-                outline: 'none'
+                outline: 'none',
+                background: '#fff',
+                color: '#000'
               }}
             />
             <button

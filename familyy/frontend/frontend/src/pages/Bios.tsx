@@ -111,10 +111,10 @@ const Bios: React.FC = () => {
     <Layout>
       <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '32px', color: colors.title, marginBottom: '8px' }}>
+          <h1 style={{ fontSize: '32px', color: 'white', marginBottom: '8px' }}>
             Family Member Bios
           </h1>
-          <p style={{ color: colors.muted }}>
+          <p style={{ color: 'white' }}>
             Write and manage biographies for each family member
           </p>
         </div>
