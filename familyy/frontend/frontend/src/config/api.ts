@@ -126,6 +126,17 @@ api.interceptors.response.use(
       return Promise.reject(new Error('Unable to connect to server. Please check if the backend is running.'));
     }
     
+    // 503: backend or proxy explicitly unavailable (DB not ready, email down, upstream down)
+    if (error.response?.status === 503) {
+      const data = error.response?.data as { message?: string; hint?: string } | undefined;
+      const parts = [data?.message, data?.hint].filter(Boolean);
+      const msg =
+        parts.length > 0
+          ? parts.join(' ')
+          : 'Service temporarily unavailable. If this persists, the server may be restarting or the database may be unreachable.';
+      return Promise.reject(new Error(msg));
+    }
+
     // Handle 401 errors - don't auto-redirect on login page
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;

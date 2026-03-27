@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 const Family = require('../models/Family');
 const Member = require('../models/Member');
@@ -6,6 +7,15 @@ const User = require('../models/User');
 const FamilyTree = require('../models/FamilyTree');
 const { protect } = require('../middleware/auth');
 const xlsx = require('xlsx');
+
+const normalizeNamePart = (value) => {
+  if (typeof value !== 'string') return '';
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 // Try to use Cloudinary if configured, otherwise use local storage
 let upload, uploadHandler;
@@ -52,11 +62,216 @@ router.get('/', protect, async (req, res) => {
       .populate('mother', 'firstName lastName photo')
       .populate('spouse', 'firstName lastName photo')
       .populate('family', 'name')
-      .sort('generation');
+      .sort({ dateOfBirth: 1, generation: 1, firstName: 1, lastName: 1 })
+      .collation({ locale: 'en', strength: 2 });
 
     res.json({ success: true, data: members });
   } catch (error) {
     console.error('Error fetching all members:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// --- Specific /:familyId/bulk routes MUST be registered before /:familyId and /:familyId/:memberId ---
+// @route   POST /api/members/:familyId/bulk
+// @desc    Add multiple members at once with email invitations
+// @access  Private
+router.post('/:familyId/bulk', protect, async (req, res) => {
+  try {
+    const { members } = req.body;
+
+    if (!members || !Array.isArray(members) || members.length === 0) {
+      return res.status(400).json({ success: false, message: 'Please provide members array' });
+    }
+
+    const family = await Family.findById(req.params.familyId);
+    if (!family) {
+      return res.status(404).json({ success: false, message: 'Family not found' });
+    }
+
+    const addedMembers = [];
+    let emailsSent = 0;
+
+    for (const memberData of members) {
+      if (!memberData.firstName || !memberData.lastName) {
+        continue;
+      }
+
+      const member = await Member.create({
+        family: req.params.familyId,
+        firstName: normalizeNamePart(memberData.firstName),
+        lastName: normalizeNamePart(memberData.lastName),
+        email: memberData.email || '',
+        relationship: memberData.relationship || 'Other',
+        gender: memberData.gender || 'Other',
+        generation: memberData.generation || 1,
+        addedBy: req.user._id,
+      });
+
+      addedMembers.push(member);
+
+      if (memberData.email && memberData.sendEmail !== false) {
+        try {
+          const sendEmail = require('../utils/email');
+          await sendEmail({
+            to: memberData.email,
+            subject: `You've been added to ${family.name} family!`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #2563EB;">Welcome to ${family.name}!</h2>
+                <p>Hi ${memberData.firstName},</p>
+                <p>You have been added to the <strong>${family.name}</strong> family on our Family Management App.</p>
+                <p><strong>Your Details:</strong></p>
+                <ul>
+                  <li>Name: ${memberData.firstName} ${memberData.lastName}</li>
+                  <li>Relationship: ${memberData.relationship}</li>
+                  <li>Family: ${family.name}</li>
+                </ul>
+                <p>To access the family portal and connect with your family members, please:</p>
+                <ol>
+                  <li>Visit our website</li>
+                  <li>Register with this email address</li>
+                  <li>Join the family using the family passcode</li>
+                </ol>
+                <p style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <strong>Family Passcode:</strong> <span style="font-size: 24px; color: #2563EB; font-family: monospace;">${family.passcode}</span>
+                </p>
+                <p>We're excited to have you as part of the family!</p>
+                <p>Best regards,<br>The Family Management Team</p>
+              </div>
+            `,
+          });
+          emailsSent++;
+        } catch (emailError) {
+          console.error(`Failed to send email to ${memberData.email}:`, emailError);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully added ${addedMembers.length} members`,
+      addedCount: addedMembers.length,
+      emailsSent,
+      members: addedMembers,
+    });
+  } catch (error) {
+    console.error('Bulk add members error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   DELETE /api/members/:familyId/bulk
+// @desc    Remove multiple members
+// @access  Private
+router.delete('/:familyId/bulk', protect, async (req, res) => {
+  try {
+    const raw = req.body?.ids;
+    if (!Array.isArray(raw) || raw.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Send a non-empty `ids` array of member IDs to delete.',
+      });
+    }
+    const familyId = req.params.familyId;
+    const uniqueIds = [...new Set(raw.map((id) => String(id)))].filter((id) =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+    if (uniqueIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No valid member IDs provided.' });
+    }
+
+    const result = await Member.deleteMany({
+      _id: { $in: uniqueIds },
+      family: familyId,
+    });
+
+    const oidList = uniqueIds.map((id) => new mongoose.Types.ObjectId(id));
+    await Member.updateMany(
+      { family: familyId, father: { $in: oidList } },
+      { $unset: { father: 1 } }
+    );
+    await Member.updateMany(
+      { family: familyId, mother: { $in: oidList } },
+      { $unset: { mother: 1 } }
+    );
+    await Member.updateMany(
+      { family: familyId, spouse: { $in: oidList } },
+      { $unset: { spouse: 1 } }
+    );
+
+    res.json({
+      success: true,
+      deletedCount: result.deletedCount,
+      message: `Deleted ${result.deletedCount} member(s).`,
+    });
+  } catch (error) {
+    console.error('Bulk delete members error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   GET /api/members/download-template
+// @desc    Download Excel template (must be before /:familyId)
+// @access  Private
+router.get('/download-template', protect, (req, res) => {
+  try {
+    console.log('📥 Generating Excel template...');
+
+    const data = [
+      {
+        'First Name': 'John',
+        'Last Name': 'Doe',
+        'Email': 'john@example.com',
+        'Gender': 'Male',
+        'Relationship': 'Father',
+        'Date of Birth': '1980-01-15',
+        Generation: 0,
+      },
+      {
+        'First Name': 'Jane',
+        'Last Name': 'Doe',
+        'Email': 'jane@example.com',
+        'Gender': 'Female',
+        'Relationship': 'Mother',
+        'Date of Birth': '1982-03-20',
+        Generation: 0,
+      },
+      {
+        'First Name': 'Mike',
+        'Last Name': 'Doe',
+        'Email': 'mike@example.com',
+        'Gender': 'Male',
+        'Relationship': 'Son',
+        'Date of Birth': '2005-07-10',
+        Generation: 1,
+      },
+    ];
+
+    const worksheet = xlsx.utils.json_to_sheet(data);
+
+    worksheet['!cols'] = [
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 10 },
+      { wch: 15 },
+      { wch: 15 },
+      { wch: 10 },
+    ];
+
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, worksheet, 'Members');
+
+    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Disposition', 'attachment; filename=family-members-template.xlsx');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+
+    console.log('✅ Template downloaded successfully');
+  } catch (error) {
+    console.error('❌ Error generating template:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -66,11 +281,15 @@ router.get('/', protect, async (req, res) => {
 // @access  Private
 router.get('/:familyId', protect, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.familyId)) {
+      return res.status(404).json({ success: false, message: 'Family not found' });
+    }
     const members = await Member.find({ family: req.params.familyId })
       .populate('father', 'firstName lastName photo')
       .populate('mother', 'firstName lastName photo')
       .populate('spouse', 'firstName lastName photo')
-      .sort('generation');
+      .sort({ dateOfBirth: 1, generation: 1, firstName: 1, lastName: 1 })
+      .collation({ locale: 'en', strength: 2 });
 
     res.json({ success: true, data: members });
   } catch (error) {
@@ -92,8 +311,8 @@ router.post('/:familyId', protect, upload.single('photo'), async (req, res) => {
 
     const member = await Member.create({
       family: req.params.familyId,
-      firstName,
-      lastName,
+      firstName: normalizeNamePart(firstName),
+      lastName: normalizeNamePart(lastName),
       email,
       photo: photoUrl,
       gender,
@@ -258,6 +477,9 @@ router.post('/:familyId', protect, upload.single('photo'), async (req, res) => {
 // @access  Private
 router.put('/:familyId/:memberId', protect, upload.single('photo'), async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.memberId)) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
     const { firstName, lastName, email, gender, dateOfBirth, relationship, role, fatherId, motherId, spouseId, generation } = req.body;
 
     const member = await Member.findOne({ _id: req.params.memberId, family: req.params.familyId });
@@ -267,8 +489,8 @@ router.put('/:familyId/:memberId', protect, upload.single('photo'), async (req, 
     }
 
     // Update fields
-    if (firstName) member.firstName = firstName;
-    if (lastName) member.lastName = lastName;
+    if (firstName) member.firstName = normalizeNamePart(firstName);
+    if (lastName) member.lastName = normalizeNamePart(lastName);
     if (email) member.email = email;
     if (gender) member.gender = gender;
     if (dateOfBirth) member.dateOfBirth = dateOfBirth;
@@ -304,6 +526,9 @@ router.put('/:familyId/:memberId', protect, upload.single('photo'), async (req, 
 // @access  Private
 router.delete('/:familyId/:memberId', protect, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.memberId)) {
+      return res.status(404).json({ success: false, message: 'Member not found' });
+    }
     const member = await Member.findOne({ _id: req.params.memberId, family: req.params.familyId });
 
     if (!member) {
@@ -359,161 +584,6 @@ router.post('/upload-excel/:familyId', protect, upload.single('file'), async (re
       }
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// @route   GET /api/members/download-template
-// @desc    Download Excel template
-// @access  Private
-router.get('/download-template', protect, (req, res) => {
-  try {
-    console.log('📥 Generating Excel template...');
-    
-    const data = [
-      { 
-        'First Name': 'John', 
-        'Last Name': 'Doe', 
-        'Email': 'john@example.com', 
-        'Gender': 'Male',
-        'Relationship': 'Father', 
-        'Date of Birth': '1980-01-15',
-        'Generation': 0
-      },
-      { 
-        'First Name': 'Jane', 
-        'Last Name': 'Doe', 
-        'Email': 'jane@example.com', 
-        'Gender': 'Female',
-        'Relationship': 'Mother', 
-        'Date of Birth': '1982-03-20',
-        'Generation': 0
-      },
-      { 
-        'First Name': 'Mike', 
-        'Last Name': 'Doe', 
-        'Email': 'mike@example.com', 
-        'Gender': 'Male',
-        'Relationship': 'Son', 
-        'Date of Birth': '2005-07-10',
-        'Generation': 1
-      }
-    ];
-
-    const worksheet = xlsx.utils.json_to_sheet(data);
-    
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 15 }, // First Name
-      { wch: 15 }, // Last Name
-      { wch: 25 }, // Email
-      { wch: 10 }, // Gender
-      { wch: 15 }, // Relationship
-      { wch: 15 }, // Date of Birth
-      { wch: 10 }  // Generation
-    ];
-    
-    const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, 'Members');
-
-    const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-
-    res.setHeader('Content-Disposition', 'attachment; filename=family-members-template.xlsx');
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.send(buffer);
-    
-    console.log('✅ Template downloaded successfully');
-  } catch (error) {
-    console.error('❌ Error generating template:', error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// @route   POST /api/members/:familyId/bulk
-// @desc    Add multiple members at once with email invitations
-// @access  Private
-router.post('/:familyId/bulk', protect, async (req, res) => {
-  try {
-    const { members } = req.body;
-    
-    if (!members || !Array.isArray(members) || members.length === 0) {
-      return res.status(400).json({ success: false, message: 'Please provide members array' });
-    }
-
-    const family = await Family.findById(req.params.familyId);
-    if (!family) {
-      return res.status(404).json({ success: false, message: 'Family not found' });
-    }
-
-    const addedMembers = [];
-    let emailsSent = 0;
-
-    for (const memberData of members) {
-      if (!memberData.firstName || !memberData.lastName) {
-        continue; // Skip invalid members
-      }
-
-      const member = await Member.create({
-        family: req.params.familyId,
-        firstName: memberData.firstName,
-        lastName: memberData.lastName,
-        email: memberData.email || '',
-        relationship: memberData.relationship || 'Other',
-        gender: memberData.gender || 'Other',
-        generation: memberData.generation || 1,
-        addedBy: req.user._id
-      });
-
-      addedMembers.push(member);
-
-      // Send email invitation if email is provided
-      if (memberData.email && memberData.sendEmail !== false) {
-        try {
-          const sendEmail = require('../utils/email');
-          await sendEmail({
-            to: memberData.email,
-            subject: `You've been added to ${family.name} family!`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #2563EB;">Welcome to ${family.name}!</h2>
-                <p>Hi ${memberData.firstName},</p>
-                <p>You have been added to the <strong>${family.name}</strong> family on our Family Management App.</p>
-                <p><strong>Your Details:</strong></p>
-                <ul>
-                  <li>Name: ${memberData.firstName} ${memberData.lastName}</li>
-                  <li>Relationship: ${memberData.relationship}</li>
-                  <li>Family: ${family.name}</li>
-                </ul>
-                <p>To access the family portal and connect with your family members, please:</p>
-                <ol>
-                  <li>Visit our website</li>
-                  <li>Register with this email address</li>
-                  <li>Join the family using the family passcode</li>
-                </ol>
-                <p style="background: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                  <strong>Family Passcode:</strong> <span style="font-size: 24px; color: #2563EB; font-family: monospace;">${family.passcode}</span>
-                </p>
-                <p>We're excited to have you as part of the family!</p>
-                <p>Best regards,<br>The Family Management Team</p>
-              </div>
-            `
-          });
-          emailsSent++;
-        } catch (emailError) {
-          console.error(`Failed to send email to ${memberData.email}:`, emailError);
-        }
-      }
-    }
-
-    res.json({
-      success: true,
-      message: `Successfully added ${addedMembers.length} members`,
-      addedCount: addedMembers.length,
-      emailsSent,
-      members: addedMembers
-    });
-  } catch (error) {
-    console.error('Bulk add members error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

@@ -1,15 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Layout from '../components/Layout';
 import { colors } from '../styles/colors';
 import api, { getApiUrl } from '../config/api';
+import { RELATIONSHIP_OPTIONS } from '../constants/relationshipOptions';
+import {
+  buildRelativeSelectGroupsFromMembers,
+  parseCoupleSelection
+} from '../utils/relativeSelectOptions';
+import { sortMembersByAgeDesc } from '../utils/sortMembersByAge';
 import { FaPlus, FaTrash, FaEdit, FaUser, FaTimes, FaDownload, FaUpload } from 'react-icons/fa';
 import { FiImage } from 'react-icons/fi';
+
+const MEMBERS_CACHE_KEY = 'members_page_cache_v1';
+
+function getMemberPhotoSrc(member: { photo?: string }): string {
+  const photo = (member.photo || '').trim();
+  if (!photo) return '';
+  if (photo.startsWith('http://') || photo.startsWith('https://')) {
+    if (photo.includes('localhost') || photo.startsWith('http://')) {
+      const apiBaseUrl = getApiUrl().replace('/api', '');
+      try {
+        const url = new URL(photo);
+        return `${apiBaseUrl}${url.pathname}`;
+      } catch {
+        return photo.replace(/http:\/\/[^/]+/, apiBaseUrl);
+      }
+    }
+    return photo;
+  }
+  const apiBaseUrl = getApiUrl().replace('/api', '');
+  if (photo.startsWith('/uploads/')) return `${apiBaseUrl}${photo}`;
+  if (photo.startsWith('uploads/')) return `${apiBaseUrl}/${photo}`;
+  if (photo.startsWith('/')) return `${apiBaseUrl}${photo}`;
+  return `${apiBaseUrl}/uploads/${photo}`;
+}
 
 const Members: React.FC = () => {
   const [families, setFamilies] = useState<any[]>([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
   const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showBulkAddModal, setShowBulkAddModal] = useState(false);
@@ -50,37 +83,85 @@ const Members: React.FC = () => {
   const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const excelImportRef = useRef<HTMLInputElement>(null);
+  const [excelImportLoading, setExcelImportLoading] = useState(false);
+  const [memberUpdateSaving, setMemberUpdateSaving] = useState(false);
 
-  const relationshipOptions = [
-    'Great Grandfather', 'Great Grandmother',
-    'Grandfather', 'Grandmother', 
-    'Father', 'Mother', 'Uncle', 'Aunt',
-    'Son', 'Daughter', 'Brother', 'Sister', 'Cousin',
-    'Grandson', 'Granddaughter',
-    'Nephew', 'Niece', 'Spouse', 'Other'
-  ];
+  const relationshipOptions = RELATIONSHIP_OPTIONS;
 
-  // Calculate generation based on relationship
-  // Generation 1: Great Grandfather/Great Grandmother (top)
-  // Generation 2: Grandfather/Grandmother
-  // Generation 3: Father/Mother/Uncle/Aunt
-  // Generation 4: Son/Daughter/Cousin
-  // Generation 5: Grandson/Granddaughter
+  const bulkRelativeSelectGroups = useMemo(
+    () => buildRelativeSelectGroupsFromMembers(members),
+    [members]
+  );
+
+  // Calculate generation based on relationship (0 = oldest tier in tree)
   const getGenerationFromRelationship = (relationship: string): number => {
     const rel = relationship.toLowerCase().trim();
-    if (rel === 'great grandfather' || rel === 'great grandmother') {
-      return 1; // Top generation (great grandparents)
-    } else if (rel === 'grandfather' || rel === 'grandmother') {
-      return 2; // Grandparents generation
-    } else if (rel === 'father' || rel === 'mother' || rel === 'uncle' || rel === 'aunt') {
-      return 3; // Parents generation
-    } else if (rel === 'son' || rel === 'daughter' || rel === 'brother' || rel === 'sister' || 
-               rel === 'cousin' || rel === 'nephew' || rel === 'niece') {
-      return 4; // Children generation
-    } else if (rel === 'grandson' || rel === 'granddaughter') {
-      return 5; // Grandchildren generation
+    if (rel === 'great great grandfather' || rel === 'great great grandmother') {
+      return 0;
     }
-    return 1; // Default for 'Other' or unknown (assume top generation)
+    if (rel === 'great grandfather' || rel === 'great grandmother') {
+      return 1;
+    }
+    if (
+      rel === 'grandfather' ||
+      rel === 'grandmother' ||
+      rel === 'great uncle' ||
+      rel === 'great aunt'
+    ) {
+      return 2;
+    }
+    if (
+      rel === 'father' ||
+      rel === 'mother' ||
+      rel === 'uncle' ||
+      rel === 'aunt' ||
+      rel === 'stepfather' ||
+      rel === 'stepmother' ||
+      rel === 'father-in-law' ||
+      rel === 'mother-in-law' ||
+      rel === 'adoptive father' ||
+      rel === 'adoptive mother'
+    ) {
+      return 3;
+    }
+    if (rel === 'myself') {
+      return 3;
+    }
+    if (
+      rel === 'son' ||
+      rel === 'daughter' ||
+      rel === 'brother' ||
+      rel === 'sister' ||
+      rel === 'cousin' ||
+      rel === 'half brother' ||
+      rel === 'half sister' ||
+      rel === 'stepbrother' ||
+      rel === 'stepsister' ||
+      rel === 'nephew' ||
+      rel === 'niece' ||
+      rel === 'spouse' ||
+      rel === 'brother-in-law' ||
+      rel === 'sister-in-law' ||
+      rel === 'son-in-law' ||
+      rel === 'daughter-in-law' ||
+      rel === 'stepson' ||
+      rel === 'stepdaughter' ||
+      rel === 'adopted son' ||
+      rel === 'adopted daughter' ||
+      rel === 'guardian'
+    ) {
+      return 4;
+    }
+    if (rel === 'grandson' || rel === 'granddaughter') {
+      return 5;
+    }
+    if (rel === 'great grandson' || rel === 'great granddaughter') {
+      return 6;
+    }
+    if (rel === 'other') {
+      return 1;
+    }
+    return 1;
   };
 
   // Find potential spouse when creating a member
@@ -149,6 +230,17 @@ const Members: React.FC = () => {
   };
 
   useEffect(() => {
+    try {
+      const cachedRaw = sessionStorage.getItem(MEMBERS_CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (Array.isArray(cached?.families)) setFamilies(cached.families);
+        if (typeof cached?.selectedFamilyId === 'string') setSelectedFamilyId(cached.selectedFamilyId);
+        if (Array.isArray(cached?.members)) setMembers(sortMembersByAgeDesc(cached.members));
+      }
+    } catch {
+      // Ignore cache read errors
+    }
     fetchFamilies();
   }, []);
 
@@ -158,15 +250,37 @@ const Members: React.FC = () => {
     }
   }, [selectedFamilyId]);
 
+  useEffect(() => {
+    setSelectedMemberIds([]);
+  }, [selectedFamilyId]);
+
+  useEffect(() => {
+    setSelectedMemberIds((prev) =>
+      prev.filter((id) => members.some((m) => String(m._id) === id))
+    );
+  }, [members]);
+
+  useEffect(() => {
+    const el = selectAllCheckboxRef.current;
+    if (el && members.length > 0) {
+      el.indeterminate =
+        selectedMemberIds.length > 0 && selectedMemberIds.length < members.length;
+    }
+  }, [selectedMemberIds, members.length]);
+
   const fetchFamilies = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/families');
-      setFamilies(response.data.data);
-      if (response.data.data.length > 0) {
-        setSelectedFamilyId(response.data.data[0]._id);
+      const fetchedFamilies = response.data.data || [];
+      setFamilies(fetchedFamilies);
+      if (fetchedFamilies.length > 0 && !selectedFamilyId) {
+        setSelectedFamilyId(fetchedFamilies[0]._id);
       }
     } catch (error) {
       console.error('Error fetching families:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -175,7 +289,20 @@ const Members: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.get(`/members/${familyId}`);
-      setMembers(response.data.data || []);
+      const sortedMembers = sortMembersByAgeDesc(response.data.data || []);
+      setMembers(sortedMembers);
+      try {
+        sessionStorage.setItem(
+          MEMBERS_CACHE_KEY,
+          JSON.stringify({
+            families,
+            selectedFamilyId: familyId,
+            members: sortedMembers
+          })
+        );
+      } catch {
+        // Ignore cache write errors
+      }
     } catch (error) {
       console.error('Error fetching members:', error);
       setMembers([]);
@@ -285,46 +412,132 @@ const Members: React.FC = () => {
 
   const handleEditMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editingMember) return;
+    if (!editingMember || memberUpdateSaving) return;
 
+    const fatherRaw = editingMember.father;
+    const motherRaw = editingMember.mother;
+    const spouseRaw = editingMember.spouse;
+    const fatherId =
+      fatherRaw && typeof fatherRaw === 'object' ? fatherRaw._id : fatherRaw;
+    const motherId =
+      motherRaw && typeof motherRaw === 'object' ? motherRaw._id : motherRaw;
+    const spouseId =
+      spouseRaw && typeof spouseRaw === 'object' ? spouseRaw._id : spouseRaw;
+
+    setMemberUpdateSaving(true);
     try {
-      const formData = new FormData();
-      formData.append('firstName', editingMember.firstName);
-      formData.append('lastName', editingMember.lastName || '');
-      formData.append('email', editingMember.email || '');
-      formData.append('gender', editingMember.gender);
-      formData.append('relationship', editingMember.relationship);
-      formData.append('generation', editingMember.generation.toString());
-      if (editingMember.father) formData.append('fatherId', editingMember.father._id || editingMember.father);
-      if (editingMember.mother) formData.append('motherId', editingMember.mother._id || editingMember.mother);
-      if (editingMember.spouse) formData.append('spouseId', editingMember.spouse._id || editingMember.spouse);
-      if (selectedPhoto) formData.append('photo', selectedPhoto);
+      let response;
+      if (selectedPhoto) {
+        const formData = new FormData();
+        formData.append('firstName', editingMember.firstName);
+        formData.append('lastName', editingMember.lastName || '');
+        formData.append('email', editingMember.email || '');
+        formData.append('gender', editingMember.gender);
+        formData.append('relationship', editingMember.relationship);
+        formData.append('generation', String(editingMember.generation));
+        if (fatherId) formData.append('fatherId', String(fatherId));
+        if (motherId) formData.append('motherId', String(motherId));
+        if (spouseId) formData.append('spouseId', String(spouseId));
+        formData.append('photo', selectedPhoto);
+        response = await api.put(
+          `/members/${selectedFamilyId}/${editingMember._id}`,
+          formData
+        );
+      } else {
+        const body: Record<string, string | number> = {
+          firstName: editingMember.firstName,
+          lastName: editingMember.lastName || '',
+          email: editingMember.email || '',
+          gender: editingMember.gender,
+          relationship: editingMember.relationship,
+          generation: editingMember.generation
+        };
+        if (fatherId) body.fatherId = String(fatherId);
+        if (motherId) body.motherId = String(motherId);
+        if (spouseId) body.spouseId = String(spouseId);
+        response = await api.put(
+          `/members/${selectedFamilyId}/${editingMember._id}`,
+          body
+        );
+      }
 
-      await api.put(`/members/${selectedFamilyId}/${editingMember._id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      const updated = response.data?.data;
+      if (updated) {
+        setMembers((prev) => {
+          const next = sortMembersByAgeDesc(
+            prev.map((m) =>
+              String(m._id) === String(updated._id) ? { ...m, ...updated } : m
+            )
+          );
+          try {
+            sessionStorage.setItem(
+              MEMBERS_CACHE_KEY,
+              JSON.stringify({
+                families,
+                selectedFamilyId: selectedFamilyId,
+                members: next
+              })
+            );
+          } catch {
+            // ignore cache write errors
+          }
+          return next;
+        });
+      }
 
-      alert('Member updated successfully!');
       setShowEditModal(false);
       setEditingMember(null);
       resetForm();
-      fetchMembers(selectedFamilyId);
+      window.dispatchEvent(new CustomEvent('memberAdded'));
     } catch (error: any) {
       console.error('Error updating member:', error);
       alert(error.response?.data?.message || 'Error updating member');
+    } finally {
+      setMemberUpdateSaving(false);
     }
   };
 
-  const handleDeleteMember = async (memberId: string) => {
-    if (!window.confirm('Are you sure you want to delete this member?')) return;
+  const toggleMemberSelected = (id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  };
 
+  const allMembersSelected =
+    members.length > 0 && selectedMemberIds.length === members.length;
+
+  const toggleSelectAllMembers = () => {
+    if (allMembersSelected) {
+      setSelectedMemberIds([]);
+    } else {
+      setSelectedMemberIds(members.map((m) => String(m._id)));
+    }
+  };
+
+  const handleBulkDeleteSelected = async () => {
+    if (!selectedFamilyId || selectedMemberIds.length === 0) return;
+    const n = selectedMemberIds.length;
+    if (
+      !window.confirm(
+        `Delete ${n} selected member${n === 1 ? '' : 's'}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setBulkDeleteLoading(true);
     try {
-      await api.delete(`/members/${selectedFamilyId}/${memberId}`);
-      alert('Member deleted successfully!');
-      fetchMembers(selectedFamilyId);
+      const { data } = await api.delete(`/members/${selectedFamilyId}/bulk`, {
+        data: { ids: selectedMemberIds },
+      });
+      setSelectedMemberIds([]);
+      alert(data?.message || `Removed ${data?.deletedCount ?? n} member(s).`);
+      await fetchMembers(selectedFamilyId);
+      window.dispatchEvent(new CustomEvent('memberAdded'));
     } catch (error: any) {
-      console.error('Error deleting member:', error);
-      alert(error.response?.data?.message || 'Error deleting member');
+      console.error('Bulk delete error:', error);
+      alert(error.response?.data?.message || 'Could not delete selected members.');
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -380,6 +593,14 @@ const Members: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const lowerName = (file.name || '').toLowerCase();
+    const isExcelFile = lowerName.endsWith('.xlsx') || lowerName.endsWith('.xls');
+    if (!isExcelFile) {
+      alert('Please upload only Excel files (.xlsx or .xls).');
+      e.target.value = '';
+      return;
+    }
+
     if (!selectedFamilyId) {
       alert('Please select a family first');
       e.target.value = '';
@@ -388,36 +609,95 @@ const Members: React.FC = () => {
 
     const formData = new FormData();
     formData.append('file', file);
+    let timeoutId: number | undefined;
+
+    setExcelImportLoading(true);
 
     try {
-      const response = await api.post(`/families/${selectedFamilyId}/import-excel`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('You are not logged in. Please login and try again.');
+      }
+
+      const controller = new AbortController();
+      timeoutId = window.setTimeout(() => controller.abort(), 300000); // 5 min
+
+      const baseApiUrl = getApiUrl().replace(/\/$/, '');
+      const importUrl = `${baseApiUrl}/families/${selectedFamilyId}/import-excel`;
+
+      const response = await fetch(importUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData,
+        signal: controller.signal
       });
 
-      alert(response.data.message || 'Members imported successfully!');
+      window.clearTimeout(timeoutId);
+
+      const responseText = await response.text();
+      let responseData: any = {};
+      try {
+        responseData = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        responseData = { message: responseText || 'Unexpected server response' };
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          responseData?.message ||
+          (response.status === 400
+            ? 'Only Excel files (.xlsx, .xls) are allowed.'
+            : `Import failed with status ${response.status}`)
+        );
+      }
+
+      const importedCount = responseData?.importedCount;
+      const skippedCount = responseData?.skippedCount;
+      const skippedRows = Array.isArray(responseData?.skippedRows) ? responseData.skippedRows : [];
+
+      if (typeof importedCount === 'number' || typeof skippedCount === 'number') {
+        const summaryLines = [
+          responseData.message || 'Import completed.',
+          `Imported: ${importedCount ?? 0}`,
+          `Skipped: ${skippedCount ?? 0}`
+        ];
+
+        if (skippedRows.length > 0) {
+          summaryLines.push('', 'Skipped row details:');
+          skippedRows.slice(0, 10).forEach((item: any) => {
+            summaryLines.push(`- Row ${item.row}: ${item.reason}`);
+          });
+          if (skippedRows.length > 10) {
+            summaryLines.push(`...and ${skippedRows.length - 10} more`);
+          }
+        }
+
+        alert(summaryLines.join('\n'));
+      } else {
+        alert(responseData.message || 'Members imported successfully!');
+      }
       // Refresh members after import
       if (selectedFamilyId) {
         fetchMembers(selectedFamilyId);
       }
     } catch (error: any) {
       console.error('Error importing Excel:', error);
-      alert(error.response?.data?.message || 'Error importing Excel file');
+      if (error?.name === 'AbortError') {
+        alert('Import timed out. Please try a smaller Excel file or retry.');
+      } else {
+        alert(error?.message || error?.response?.data?.message || 'Error importing Excel file');
+      }
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      setExcelImportLoading(false);
+      e.target.value = '';
     }
-
-    // Reset file input
-    e.target.value = '';
   };
 
-
-  if (loading && !selectedFamilyId) {
-    return (
-      <Layout>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <div className="spinner" />
-        </div>
-      </Layout>
-    );
-  }
 
   const potentialFathers = members.filter(m => m.gender === 'Male');
   const potentialMothers = members.filter(m => m.gender === 'Female');
@@ -433,24 +713,35 @@ const Members: React.FC = () => {
             <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>Add and manage family members</p>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
+            {loading && <span style={{ color: 'white', fontSize: '13px', alignSelf: 'center', opacity: 0.9 }}>Refreshing...</span>}
             <button
+              type="button"
               onClick={() => excelImportRef.current?.click()}
-              disabled={!selectedFamilyId}
+              disabled={!selectedFamilyId || excelImportLoading}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '12px 20px',
-                background: !selectedFamilyId ? colors.muted : '#3B82F6',
+                background: !selectedFamilyId || excelImportLoading ? colors.muted : '#3B82F6',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '14px',
                 fontWeight: '600',
-                cursor: !selectedFamilyId ? 'not-allowed' : 'pointer'
+                cursor: !selectedFamilyId || excelImportLoading ? 'not-allowed' : 'pointer'
               }}
             >
-              <FaUpload /> Import Excel
+              {excelImportLoading ? (
+                <>
+                  <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  Importing…
+                </>
+              ) : (
+                <>
+                  <FaUpload /> Import Excel
+                </>
+              )}
             </button>
             <button
               onClick={handleExportMembers}
@@ -497,6 +788,35 @@ const Members: React.FC = () => {
           </div>
         </div>
 
+        {excelImportLoading && (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              marginBottom: '20px',
+              padding: '14px 18px',
+              background: 'rgba(59, 130, 246, 0.18)',
+              border: '1px solid rgba(147, 197, 253, 0.5)',
+              borderRadius: '10px',
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: 500
+            }}
+          >
+            <div className="spinner" style={{ width: 22, height: 22, borderWidth: 3, flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 600, marginBottom: '4px' }}>Importing your file…</div>
+              <div style={{ opacity: 0.92, fontSize: '14px', fontWeight: 400 }}>
+                Your spreadsheet is uploading and being processed. This can take a few seconds for large files — please
+                wait; you do not need to select the file again.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Family Selector */}
         <div style={{
           background: colors.cardBg,
@@ -530,198 +850,269 @@ const Members: React.FC = () => {
           </select>
         </div>
 
+        {/* Bulk selection toolbar */}
+        {selectedFamilyId && members.length > 0 && !loading && (
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              background: colors.cardBg,
+              padding: '14px 18px',
+              borderRadius: '12px',
+              border: `1px solid ${colors.border}`,
+              marginBottom: '20px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              <label
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  color: colors.body,
+                  userSelect: 'none',
+                }}
+              >
+                <input
+                  ref={selectAllCheckboxRef}
+                  type="checkbox"
+                  checked={allMembersSelected}
+                  onChange={toggleSelectAllMembers}
+                />
+                Select all ({members.length})
+              </label>
+              <span style={{ color: colors.muted, fontSize: '14px' }}>
+                {selectedMemberIds.length === 0
+                  ? 'Tick people to delete several at once'
+                  : `${selectedMemberIds.length} selected`}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {selectedMemberIds.length > 0 && (
+                <button
+                  type="button"
+                  disabled={bulkDeleteLoading}
+                  onClick={() => setSelectedMemberIds([])}
+                  style={{
+                    padding: '10px 16px',
+                    background: colors.sectionBg,
+                    color: colors.body,
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: bulkDeleteLoading ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Clear selection
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={selectedMemberIds.length === 0 || bulkDeleteLoading}
+                onClick={handleBulkDeleteSelected}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  background:
+                    selectedMemberIds.length === 0 || bulkDeleteLoading ? colors.muted : '#DC2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor:
+                    selectedMemberIds.length === 0 || bulkDeleteLoading ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <FaTrash />
+                {bulkDeleteLoading
+                  ? 'Deleting…'
+                  : `Delete selected${selectedMemberIds.length ? ` (${selectedMemberIds.length})` : ''}`}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Members Grid */}
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
             <div className="spinner" />
           </div>
         ) : members.length > 0 ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-            {members.map((member) => (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))',
+              gap: '10px',
+              alignItems: 'stretch'
+            }}
+          >
+            {members.map((member) => {
+              const mid = String(member._id);
+              const isCardSelected = selectedMemberIds.includes(mid);
+              return (
               <div
                 key={member._id}
                 style={{
-                  background: '#fff',
-                  borderRadius: '12px',
-                  border: `1px solid ${colors.border}`,
+                  position: 'relative',
+                  borderRadius: '8px',
+                  border: isCardSelected
+                    ? `2px solid ${colors.primary}`
+                    : `1px solid ${colors.border}`,
                   overflow: 'hidden',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                  boxShadow: isCardSelected
+                    ? '0 4px 16px rgba(59, 130, 246, 0.25)'
+                    : '0 2px 8px rgba(0,0,0,0.1)',
+                  transition: 'box-shadow 0.2s, border-color 0.2s',
+                  minHeight: '200px',
+                  height: '100%',
+                  isolation: 'isolate'
                 }}
               >
-                {/* Photo */}
-                <div style={{
-                  height: '180px',
-                  background: (() => {
-                    // Construct proper photo URL
-                    if (!member.photo || member.photo.trim() === '') {
-                      return member.gender === 'Male' ? '#E0F2FE' : '#F0F9FF';
-                    }
-                    
-                    const photo = member.photo.trim();
-                    
-                    // If already a full URL (http/https), use as-is (but fix localhost or HTTP)
-                    if (photo.startsWith('http://') || photo.startsWith('https://')) {
-                      if (photo.includes('localhost') || photo.startsWith('http://')) {
-                        const apiBaseUrl = getApiUrl().replace('/api', '');
-                        try {
-                          const url = new URL(photo);
-                          return `url(${apiBaseUrl}${url.pathname})`;
-                        } catch {
-                          return `url(${photo.replace(/http:\/\/[^/]+/, apiBaseUrl)})`;
-                        }
-                      }
-                      return `url(${photo})`;
-                    }
-                    
-                    // If it's a filename or relative path, construct full URL
-                    const apiBaseUrl = getApiUrl().replace('/api', '');
-                    
-                    // Handle different path formats
-                    if (photo.startsWith('/uploads/')) {
-                      return `url(${apiBaseUrl}${photo})`;
-                    } else if (photo.startsWith('uploads/')) {
-                      return `url(${apiBaseUrl}/${photo})`;
-                    } else if (photo.startsWith('/')) {
-                      return `url(${apiBaseUrl}${photo})`;
-                    } else {
-                      // Just filename, add /uploads/ prefix
-                      return `url(${apiBaseUrl}/uploads/${photo})`;
-                    }
-                  })(),
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  position: 'relative'
-                }}>
-                  {!member.photo && (
-                    <FaUser size={60} color={member.gender === 'Male' ? colors.primary : colors.primary} />
-                  )}
-                  {/* Fallback if image fails to load */}
-                  {member.photo && (
-                    <img
-                      src={(() => {
-                        // Construct proper photo URL for img tag (fallback)
-                        const photo = member.photo.trim();
-                        if (photo.startsWith('http://') || photo.startsWith('https://')) {
-                          // Replace any HTTP URLs or localhost URLs with current API base URL
-                          if (photo.includes('localhost') || photo.startsWith('http://')) {
-                            const apiBaseUrl = getApiUrl().replace('/api', '');
-                            try {
-                              const url = new URL(photo);
-                              return `${apiBaseUrl}${url.pathname}`;
-                            } catch {
-                              return photo.replace(/http:\/\/[^/]+/, apiBaseUrl);
-                            }
-                          }
-                          return photo;
-                        }
-                        const apiBaseUrl = getApiUrl().replace('/api', '');
-                        if (photo.startsWith('/uploads/')) {
-                          return `${apiBaseUrl}${photo}`;
-                        } else if (photo.startsWith('uploads/')) {
-                          return `${apiBaseUrl}/${photo}`;
-                        } else if (photo.startsWith('/')) {
-                          return `${apiBaseUrl}${photo}`;
-                        } else {
-                          return `${apiBaseUrl}/uploads/${photo}`;
-                        }
-                      })()}
-                      alt={`${member.firstName} ${member.lastName}`}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        display: member.photo ? 'block' : 'none'
-                      }}
-                      onError={(e) => {
-                        // Hide image if it fails to load, background will show
-                        e.currentTarget.style.display = 'none';
-                      }}
-                      onLoad={() => {
-                        console.log('Member photo loaded successfully:', member.firstName, member.lastName);
-                      }}
-                    />
-                  )}
-                </div>
-
-                {/* Info */}
-                <div style={{ padding: '16px' }}>
-                  <h3 style={{ fontSize: '18px', color: '#000', margin: '0 0 4px 0', fontWeight: '600' }}>
+                {member.photo?.trim() ? (
+                  <img
+                    src={getMemberPhotoSrc(member)}
+                    alt={`${member.firstName} ${member.lastName || ''}`}
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      objectPosition: 'center center',
+                      display: 'block'
+                    }}
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                ) : null}
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: member.photo?.trim()
+                      ? 'transparent'
+                      : member.gender === 'Male'
+                        ? 'linear-gradient(165deg, #E0F2FE 0%, #93c5fd 100%)'
+                        : 'linear-gradient(165deg, #F0F9FF 0%, #e9d5ff 100%)',
+                    zIndex: 0
+                  }}
+                />
+                {!member.photo?.trim() && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 1
+                    }}
+                  >
+                    <FaUser size={48} color={colors.primary} />
+                  </div>
+                )}
+                <div
+                  aria-hidden
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background:
+                      'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 35%, transparent 60%)',
+                    pointerEvents: 'none',
+                    zIndex: 2
+                  }}
+                />
+                <label
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    left: 6,
+                    zIndex: 5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 22,
+                    height: 22,
+                    background: 'rgba(255,255,255,0.96)',
+                    borderRadius: 5,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isCardSelected}
+                    onChange={() => toggleMemberSelected(mid)}
+                    aria-label={`Select ${member.firstName} ${member.lastName || ''}`}
+                    style={{ width: 13, height: 13, cursor: 'pointer', margin: 0 }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => openEditModal(member)}
+                  title="Edit member"
+                  aria-label={`Edit ${member.firstName} ${member.lastName || ''}`}
+                  style={{
+                    position: 'absolute',
+                    top: 6,
+                    right: 6,
+                    zIndex: 5,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: 30,
+                    height: 30,
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: '50%',
+                    background: 'rgba(255,255,255,0.94)',
+                    color: colors.primary,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.15)'
+                  }}
+                >
+                  <FaEdit size={15} aria-hidden />
+                </button>
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '10px 10px 12px',
+                    zIndex: 3
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: 0,
+                      color: '#fff',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      lineHeight: 1.25,
+                      textShadow: '0 1px 10px rgba(0,0,0,0.85)',
+                      wordBreak: 'break-word'
+                    }}
+                  >
                     {member.firstName} {member.lastName || ''}
                   </h3>
-                  <p style={{ fontSize: '14px', color: '#333', margin: '0 0 8px 0' }}>
-                    {member.relationship} • Gen {member.generation + 1}
-                  </p>
-                  {member.email && (
-                    <p style={{ fontSize: '13px', color: '#666', margin: '0 0 12px 0' }}>
-                      {member.email}
-                    </p>
-                  )}
-
-                  {/* Relationships */}
-                  {(member.father || member.mother || member.spouse) && (
-                    <div style={{
-                      background: colors.sectionBg,
-                      padding: '8px',
-                      borderRadius: '6px',
-                      marginBottom: '12px',
-                      fontSize: '12px',
-                      color: '#333'
-                    }}>
-                      {member.father && <div>👨 Father: {member.father.firstName}</div>}
-                      {member.mother && <div>👩 Mother: {member.mother.firstName}</div>}
-                      {member.spouse && <div>💑 Spouse: {member.spouse.firstName}</div>}
-                    </div>
-                  )}
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      onClick={() => openEditModal(member)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        background: colors.primarySoft,
-                        color: colors.primary,
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <FaEdit /> Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteMember(member._id)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        background: '#FEE2E2',
-                        color: '#DC2626',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px'
-                      }}
-                    >
-                      <FaTrash /> Delete
-                    </button>
-                  </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         ) : (
           <div style={{
@@ -972,7 +1363,10 @@ const Members: React.FC = () => {
                                     ...m, 
                                     relationship: relationshipValue,
                                     generation: generation,
-                                    spouseId: potentialSpouseId || m.spouseId || ''
+                                    spouseId: potentialSpouseId || m.spouseId || '',
+                                    ...(relationshipValue === 'Myself'
+                                      ? { relativeId: '', fatherId: '', motherId: '' }
+                                      : {})
                                   };
                                 }
                                 return { ...m };
@@ -996,25 +1390,53 @@ const Members: React.FC = () => {
                       </div>
                       <div>
                         <label style={{ display: 'block', color: colors.body, fontWeight: '500', marginBottom: '6px', fontSize: '13px' }}>
-                          Select Relative
+                          Select relative
+                          {(bulkMembers[index]?.relationship === 'Son' ||
+                            bulkMembers[index]?.relationship === 'Daughter') &&
+                            ' (couple = both parents)'}
                         </label>
+                        {(bulkMembers[index]?.relationship || 'Other') === 'Myself' ? (
+                          <div
+                            style={{
+                              padding: '10px',
+                              border: `1px solid ${colors.border}`,
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              color: colors.muted,
+                              background: colors.sectionBg
+                            }}
+                          >
+                            Not used for Myself
+                          </div>
+                        ) : (
                         <select
                           value={bulkMembers[index]?.relativeId || ''}
                           onChange={(e) => {
                             const relativeId = e.target.value;
                             const relationshipValue = bulkMembers[index]?.relationship || 'Other';
-                            const memberGender = bulkMembers[index]?.gender || 'Male';
                             
-                            // Find the selected relative
-                            const relative = members.find(m => m._id === relativeId);
-                            
-                            // Calculate relationships based on relationship type and relative
+                            const getM = (id: string) =>
+                              members.find((m) => String(m._id) === String(id));
+
                             let fatherId = '';
                             let motherId = '';
                             let spouseId = '';
                             let generation = getGenerationFromRelationship(relationshipValue);
-                            
-                            if (relative && relationshipValue !== 'Other') {
+
+                            const paired = parseCoupleSelection(relativeId, (id) => getM(id));
+                            if (
+                              paired &&
+                              (relationshipValue === 'Son' || relationshipValue === 'Daughter')
+                            ) {
+                              fatherId = paired.fatherId;
+                              motherId = paired.motherId;
+                              const p1 = getM(paired.fatherId);
+                              const p2 = getM(paired.motherId);
+                              generation =
+                                Math.max(p1?.generation ?? 0, p2?.generation ?? 0) + 1;
+                            } else {
+                              const relative = getM(relativeId);
+                              if (relative && relationshipValue !== 'Other') {
                               if (relationshipValue === 'Spouse') {
                                 spouseId = relativeId;
                                 generation = relative.generation || 0;
@@ -1027,29 +1449,24 @@ const Members: React.FC = () => {
                               } else if (relationshipValue === 'Son' || relationshipValue === 'Daughter') {
                                 generation = (relative.generation || 0) + 1;
                                 if (relative.gender === 'Male') {
-                                  fatherId = relativeId;
-                                  // Find spouse to set as mother
+                                  fatherId = String(relativeId);
                                   const spouse = members.find(m => m.spouse?._id === relativeId || m.spouse === relativeId);
-                                  if (spouse) motherId = spouse._id;
+                                  if (spouse) motherId = String(spouse._id);
                                 } else {
-                                  motherId = relativeId;
-                                  // Find spouse to set as father
+                                  motherId = String(relativeId);
                                   const spouse = members.find(m => m.spouse?._id === relativeId || m.spouse === relativeId);
-                                  if (spouse) fatherId = spouse._id;
+                                  if (spouse) fatherId = String(spouse._id);
                                 }
                               } else if (relationshipValue === 'Brother' || relationshipValue === 'Sister') {
                                 generation = relative.generation || 0;
-                                // Find relative's parents
-                                if (relative.father?._id) fatherId = relative.father._id;
-                                if (relative.mother?._id) motherId = relative.mother._id;
+                                if (relative.father?._id) fatherId = String(relative.father._id);
+                                if (relative.mother?._id) motherId = String(relative.mother._id);
                               } else if (relationshipValue === 'Uncle' || relationshipValue === 'Aunt') {
-                                // Find relative's parents (grandparents)
                                 const relativeParents = members.filter(m => 
                                   m._id === relative.father?._id || m._id === relative.mother?._id
                                 );
                                 if (relativeParents.length > 0) {
                                   generation = relativeParents[0].generation || 0;
-                                  // Find grandparents of relative
                                   const grandParent = relativeParents[0];
                                   const grandParents = members.filter(m => 
                                     m._id === grandParent.father?._id || m._id === grandParent.mother?._id
@@ -1057,13 +1474,14 @@ const Members: React.FC = () => {
                                   if (grandParents.length > 0) {
                                     const maleGP = grandParents.find(p => p.gender === 'Male');
                                     const femaleGP = grandParents.find(p => p.gender === 'Female');
-                                    if (maleGP) fatherId = maleGP._id;
-                                    if (femaleGP) motherId = femaleGP._id;
+                                    if (maleGP) fatherId = String(maleGP._id);
+                                    if (femaleGP) motherId = String(femaleGP._id);
                                   }
                                 }
                               }
+                              }
                             }
-                            
+
                             setBulkMembers((prevMembers) => {
                               return prevMembers.map((m, i) => {
                                 if (i === index) {
@@ -1091,12 +1509,33 @@ const Members: React.FC = () => {
                           }}
                         >
                           <option value="">Select a relative...</option>
-                          {members.map((member) => (
-                            <option key={member._id} value={member._id}>
-                              {member.firstName} {member.lastName} ({member.relationship})
-                            </option>
-                          ))}
+                          {(bulkMembers[index]?.relationship === 'Son' ||
+                            bulkMembers[index]?.relationship === 'Daughter') &&
+                            bulkRelativeSelectGroups.couples.length > 0 && (
+                            <optgroup label="Couples">
+                              {bulkRelativeSelectGroups.couples.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                          <optgroup
+                            label={
+                              bulkMembers[index]?.relationship === 'Son' ||
+                              bulkMembers[index]?.relationship === 'Daughter'
+                                ? 'Individuals'
+                                : 'Members'
+                            }
+                          >
+                            {bulkRelativeSelectGroups.individuals.map((o) => (
+                              <option key={o.value} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </optgroup>
                         </select>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1422,40 +1861,43 @@ const Members: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setEditingMember(null);
-                    resetForm();
-                  }}
-                  style={{
-                    padding: '12px 24px',
-                    background: colors.sectionBg,
-                    color: colors.body,
-                    border: 'none',
-                    borderRadius: '8px',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
+              <button
+                type="button"
+                disabled={memberUpdateSaving}
+                onClick={() => {
+                  setShowEditModal(false);
+                  setEditingMember(null);
+                  resetForm();
+                }}
+                style={{
+                  padding: '12px 24px',
+                  background: colors.sectionBg,
+                  color: colors.body,
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  cursor: memberUpdateSaving ? 'not-allowed' : 'pointer',
+                  opacity: memberUpdateSaving ? 0.7 : 1
+                }}
+              >
+                Cancel
+              </button>
                 <button
                   type="submit"
+                  disabled={memberUpdateSaving}
                   style={{
                     padding: '12px 24px',
-                    background: colors.primary,
+                    background: memberUpdateSaving ? colors.muted : colors.primary,
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
                     fontSize: '15px',
                     fontWeight: '600',
-                    cursor: 'pointer'
+                    cursor: memberUpdateSaving ? 'not-allowed' : 'pointer'
                   }}
                 >
-                  Update Member
+                  {memberUpdateSaving ? 'Saving…' : 'Update Member'}
                 </button>
               </div>
             </form>
@@ -1467,7 +1909,8 @@ const Members: React.FC = () => {
       <input
         type="file"
         ref={excelImportRef}
-        accept=".xlsx,.xls"
+        accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
+        disabled={excelImportLoading}
         style={{ display: 'none' }}
         onChange={handleImportExcel}
       />

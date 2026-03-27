@@ -2,15 +2,9 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const rateLimit = require('express-rate-limit');
+const { JWT_SECRET } = require('../config/env');
 
-// JWT Secret - REQUIRED in production
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('❌ JWT_SECRET environment variable is required in production!');
-  process.exit(1);
-}
-// Use a safe default JWT secret in development if none is provided.
-const JWT_SECRET_FINAL = JWT_SECRET || 'dev_jwt_secret_change_me';
+const JWT_SECRET_FINAL = JWT_SECRET;
 
 // Rate limiting for auth endpoints
 exports.authRateLimit = rateLimit({

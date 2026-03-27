@@ -20,18 +20,14 @@ router.get('/auth-url', protect, async (req, res) => {
     }
 
     const authUrl = googleDrive.getAuthUrl();
-    
-    // Log the redirect URI being used for debugging
     const getClientUrl = require('../utils/getClientUrl');
     const clientUrl = getClientUrl();
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${clientUrl}/auth/google/callback`;
-    console.log('🔍 Google Drive OAuth - Redirect URI being used:', redirectUri);
-    console.log('🔍 Google Drive OAuth - CLIENT_URL:', clientUrl);
     
     res.json({ 
       success: true, 
       authUrl,
-      redirectUri: redirectUri // Include in response for debugging
+      redirectUri
     });
   } catch (error) {
     console.error('Error getting auth URL:', error);
@@ -106,19 +102,12 @@ router.post('/authorize', protect, async (req, res) => {
       });
     }
 
-    console.log('🔐 Exchanging authorization code for tokens...');
     const tokens = await googleDrive.getTokensFromCode(code);
-    console.log('✅ Tokens received:', {
-      hasAccessToken: !!tokens.access_token,
-      hasRefreshToken: !!tokens.refresh_token,
-      expiryDate: tokens.expiry_date
-    });
     
     // Save tokens to user
     await User.findByIdAndUpdate(req.user._id, {
       googleDriveTokens: tokens
     });
-    console.log('✅ Tokens saved to database for user:', req.user._id);
 
     res.json({
       success: true,
@@ -161,16 +150,12 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
     try {
       // Update tokens in database if refreshed
-      console.log('🔐 Setting Google Drive credentials...');
       const updatedTokens = await googleDrive.setCredentials(user.googleDriveTokens);
       if (updatedTokens && JSON.stringify(updatedTokens) !== JSON.stringify(user.googleDriveTokens)) {
-        console.log('🔄 Tokens refreshed, updating database...');
         await User.findByIdAndUpdate(req.user._id, { googleDriveTokens: updatedTokens });
       }
-      console.log('✅ Credentials set successfully');
     } catch (tokenError) {
-      console.error('❌ Error setting credentials:', tokenError);
-      console.error('Token error details:', tokenError.message);
+      console.error('❌ Error setting Google Drive credentials:', tokenError.message || tokenError);
       return res.status(401).json({
         success: false,
         message: 'Google Drive authentication failed. Please reconnect your account by clicking "Connect Drive" button.',

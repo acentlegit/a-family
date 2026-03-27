@@ -71,6 +71,17 @@ const userSchema = new mongoose.Schema({
   lastLogin: Date,
   // Active family for family switching feature
   activeFamilyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Family' },
+  homepageCustomization: {
+    enabled: { type: Boolean, default: false },
+    status: { type: String, enum: ['draft', 'published'], default: 'draft' },
+    theme: { type: String, enum: ['default', 'light', 'dark'], default: 'default' },
+    title: { type: String, default: '' },
+    subtitle: { type: String, default: '' },
+    description: { type: String, default: '' },
+    heroImage: { type: String, default: '' },
+    accentColor: { type: String, default: '' },
+    updatedAt: { type: Date, default: Date.now }
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

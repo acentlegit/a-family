@@ -1,6 +1,9 @@
 require('dotenv').config();
 const { google } = require('googleapis');
 const stream = require('stream');
+const { CLIENT_URL } = require('../config/env');
+
+let lastLoggedConfigSignature = null;
 
 // Get redirect URI - automatically determined from CLIENT_URL if not explicitly set
 function getRedirectUri() {
@@ -10,8 +13,7 @@ function getRedirectUri() {
   }
   
   // Otherwise, automatically construct from CLIENT_URL
-  const getClientUrl = require('./getClientUrl');
-  const clientUrl = getClientUrl();
+  const clientUrl = CLIENT_URL;
   // Remove trailing slash if present
   const baseUrl = clientUrl.replace(/\/$/, '');
   return `${baseUrl}/auth/google/callback`;
@@ -29,8 +31,7 @@ function getOAuthClient() {
 
 const oauth2Client = getOAuthClient();
 
-// Check if Google Drive is configured
-const checkConfiguration = () => {
+const evaluateConfiguration = () => {
   const hasClientId = !!process.env.GOOGLE_CLIENT_ID;
   const hasClientSecret = !!process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri = getRedirectUri();
@@ -39,28 +40,59 @@ const checkConfiguration = () => {
     process.env.GOOGLE_CLIENT_SECRET !== 'GOCSPX-****QGaG' &&
     process.env.GOOGLE_CLIENT_SECRET.length > 10;
 
-  const configured = hasClientId && hasClientSecret && hasRedirectUri && isValidSecret;
+  return {
+    configured: hasClientId && hasClientSecret && hasRedirectUri && isValidSecret,
+    hasClientId,
+    hasClientSecret,
+    hasRedirectUri,
+    isValidSecret,
+    redirectUri,
+  };
+};
+
+const logConfiguration = (state) => {
+  const signature = JSON.stringify({
+    configured: state.configured,
+    hasClientId: state.hasClientId,
+    hasClientSecret: state.hasClientSecret,
+    hasRedirectUri: state.hasRedirectUri,
+    isValidSecret: state.isValidSecret,
+    redirectUri: state.redirectUri,
+  });
+
+  // Avoid repeated startup/runtime log flooding unless config state changed.
+  if (signature === lastLoggedConfigSignature) {
+    return;
+  }
+  lastLoggedConfigSignature = signature;
 
   // Debug logging
   console.log('🔍 Google Drive Configuration Check:');
-  console.log('  GOOGLE_CLIENT_ID:', hasClientId ? '✅ Set' : '❌ Missing');
-  console.log('  GOOGLE_CLIENT_SECRET:', hasClientSecret ? '✅ Set' : '❌ Missing');
-  console.log('  Redirect URI:', redirectUri || '❌ Missing');
+  console.log('  GOOGLE_CLIENT_ID:', state.hasClientId ? '✅ Set' : '❌ Missing');
+  console.log('  GOOGLE_CLIENT_SECRET:', state.hasClientSecret ? '✅ Set' : '❌ Missing');
+  console.log('  Redirect URI:', state.redirectUri || '❌ Missing');
   console.log('    (Auto-detected from CLIENT_URL)' + (process.env.GOOGLE_REDIRECT_URI ? ' [Explicitly set]' : ''));
-  console.log('  Secret Valid:', isValidSecret ? '✅ Valid' : '❌ Invalid');
-  console.log('  Overall Status:', configured ? '✅ CONFIGURED' : '❌ NOT CONFIGURED');
+  console.log('  Secret Valid:', state.isValidSecret ? '✅ Valid' : '❌ Invalid');
+  console.log('  Overall Status:', state.configured ? '✅ CONFIGURED' : '❌ NOT CONFIGURED');
 
-  if (!configured) {
+  if (!state.configured) {
     console.warn('⚠️  Google Drive not fully configured - using local storage for photos');
-    if (!hasClientId) console.warn('   Missing: GOOGLE_CLIENT_ID');
-    if (!hasClientSecret) console.warn('   Missing: GOOGLE_CLIENT_SECRET');
-    if (!hasRedirectUri) console.warn('   Missing: CLIENT_URL or GOOGLE_REDIRECT_URI');
-    if (hasClientSecret && !isValidSecret) console.warn('   Invalid: GOOGLE_CLIENT_SECRET format');
+    if (!state.hasClientId) console.warn('   Missing: GOOGLE_CLIENT_ID');
+    if (!state.hasClientSecret) console.warn('   Missing: GOOGLE_CLIENT_SECRET');
+    if (!state.hasRedirectUri) console.warn('   Missing: CLIENT_URL or GOOGLE_REDIRECT_URI');
+    if (state.hasClientSecret && !state.isValidSecret) console.warn('   Invalid: GOOGLE_CLIENT_SECRET format');
   } else {
     console.log('✅ Google Drive API configured');
   }
+};
 
-  return configured;
+// Check if Google Drive is configured
+const checkConfiguration = ({ log = true } = {}) => {
+  const state = evaluateConfiguration();
+  if (log) {
+    logConfiguration(state);
+  }
+  return state.configured;
 };
 
 const isConfigured = checkConfiguration();
@@ -146,7 +178,7 @@ const getOrCreateEventFolder = async (eventName, famiFolderId) => {
  * @returns {Promise<Object>} - File information including URLs
  */
 const uploadToDrive = async (fileBuffer, fileName, mimeType, folderId = null, eventName = null) => {
-  if (!checkConfiguration()) {
+  if (!checkConfiguration({ log: false })) {
     throw new Error('Google Drive not configured');
   }
 
@@ -419,7 +451,7 @@ const getTokensFromCode = async (code) => {
 
 // Export isConfigured as a function to check dynamically
 const isConfiguredFunction = () => {
-  return checkConfiguration();
+  return checkConfiguration({ log: false });
 };
 
 module.exports = {

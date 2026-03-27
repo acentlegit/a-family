@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { RELATIONSHIP_VALUES } = require('../utils/memberRelationships');
 
 const memberSchema = new mongoose.Schema({
   family: { type: mongoose.Schema.Types.ObjectId, ref: 'Family', required: true },
@@ -11,7 +12,7 @@ const memberSchema = new mongoose.Schema({
   dateOfBirth: { type: Date },
   relationship: { 
     type: String, 
-    enum: ['Great Grandfather', 'Great Grandmother', 'Grandfather', 'Grandmother', 'Father', 'Mother', 'Uncle', 'Aunt', 'Son', 'Daughter', 'Brother', 'Sister', 'Cousin', 'Grandson', 'Granddaughter', 'Nephew', 'Niece', 'Spouse', 'Other'],
+    enum: RELATIONSHIP_VALUES,
     default: 'Other'
   },
   role: { type: String, enum: ['Admin', 'Member', 'Guest'], default: 'Member' },

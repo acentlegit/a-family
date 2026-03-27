@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../styles/colors';
+import { getApiUrl } from '../config/api';
 
 const Login: React.FC = () => {
+  const HOMEPAGE_CUSTOMIZE_AFTER_LOGIN_KEY = 'homepage_customize_after_login';
   // Default user credentials (read from env only) - for checking only, not for pre-filling
   const DEFAULT_USER_EMAIL = process.env.REACT_APP_DEFAULT_USER_EMAIL || '';
   const DEFAULT_USER_PASSWORD = process.env.REACT_APP_DEFAULT_USER_PASSWORD || '';
@@ -34,9 +36,7 @@ const Login: React.FC = () => {
       
       // Also check via API for flexibility
       try {
-        const apiBase = process.env.REACT_APP_API_BASE ? 
-          (process.env.REACT_APP_API_BASE.endsWith('/api') ? process.env.REACT_APP_API_BASE : `${process.env.REACT_APP_API_BASE}/api`) :
-          (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:5000/api'); // Only localhost in development
+        const apiBase = getApiUrl();
         if (!apiBase) {
           return;
         }
@@ -126,9 +126,12 @@ const Login: React.FC = () => {
             const user = JSON.parse(userStr);
             
             setLoading(false);
-            
+            const returnToHomepageForCustomize = sessionStorage.getItem(HOMEPAGE_CUSTOMIZE_AFTER_LOGIN_KEY) === 'true';
+
             // Navigate based on role
-            if (user.role === 'SUPER_ADMIN' || user.isSuperAdmin) {
+            if (returnToHomepageForCustomize) {
+              navigate('/', { replace: true });
+            } else if (user.role === 'SUPER_ADMIN' || user.isSuperAdmin) {
               navigate('/super-admin', { replace: true });
             } else if (user.role === 'ADMIN') {
               navigate('/admin-dashboard', { replace: true });
@@ -142,7 +145,8 @@ const Login: React.FC = () => {
           }
         } else {
           setLoading(false);
-          navigate('/dashboard', { replace: true });
+          const returnToHomepageForCustomize = sessionStorage.getItem(HOMEPAGE_CUSTOMIZE_AFTER_LOGIN_KEY) === 'true';
+          navigate(returnToHomepageForCustomize ? '/' : '/dashboard', { replace: true });
         }
       } else {
         console.error('❌ Login failed: Invalid result:', result);

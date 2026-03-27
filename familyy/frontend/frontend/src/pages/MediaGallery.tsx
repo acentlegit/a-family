@@ -4,6 +4,8 @@ import { colors } from '../styles/colors';
 import api, { getApiUrl } from '../config/api';
 import { FaPlus, FaDownload, FaTrash, FaImages, FaVideo, FaTimes, FaUpload } from 'react-icons/fa';
 
+const MEDIA_GALLERY_CACHE_KEY = 'media_gallery_cache_v1';
+
 /**
  * Helper function to fix S3 URLs with invalid format
  * Converts bucket-name.s3.region.amazonaws.com to s3.region.amazonaws.com/bucket-name
@@ -111,7 +113,7 @@ const MediaGallery: React.FC = () => {
   const [media, setMedia] = useState<any[]>([]);
   const [families, setFamilies] = useState<any[]>([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -125,6 +127,17 @@ const MediaGallery: React.FC = () => {
   const [uploadingToAWS, setUploadingToAWS] = useState(false);
 
   useEffect(() => {
+    try {
+      const cachedRaw = sessionStorage.getItem(MEDIA_GALLERY_CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (Array.isArray(cached?.families)) setFamilies(cached.families);
+        if (typeof cached?.selectedFamilyId === 'string') setSelectedFamilyId(cached.selectedFamilyId);
+        if (Array.isArray(cached?.media)) setMedia(cached.media);
+      }
+    } catch {
+      // Ignore cache read errors
+    }
     fetchFamilies();
   }, []);
 
@@ -135,11 +148,13 @@ const MediaGallery: React.FC = () => {
   }, [selectedFamilyId]);
 
   const fetchFamilies = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/families');
-      setFamilies(response.data.data);
-      if (response.data.data.length > 0) {
-        setSelectedFamilyId(response.data.data[0]._id);
+      const fetchedFamilies = response.data.data || [];
+      setFamilies(fetchedFamilies);
+      if (fetchedFamilies.length > 0 && !selectedFamilyId) {
+        setSelectedFamilyId(fetchedFamilies[0]._id);
       }
     } catch (error) {
       console.error('Error fetching families:', error);
@@ -220,6 +235,18 @@ const MediaGallery: React.FC = () => {
       });
       
       setMedia(fixedMedia);
+      try {
+        sessionStorage.setItem(
+          MEDIA_GALLERY_CACHE_KEY,
+          JSON.stringify({
+            families,
+            selectedFamilyId,
+            media: fixedMedia
+          })
+        );
+      } catch {
+        // Ignore cache write errors
+      }
     } catch (error) {
       console.error('Error fetching media:', error);
       setMedia([]);
@@ -300,16 +327,6 @@ const MediaGallery: React.FC = () => {
     return item.type === filter;
   });
 
-  if (loading && !selectedFamilyId) {
-    return (
-      <Layout>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <div className="spinner" />
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout selectedFamily={families.find(f => f._id === selectedFamilyId)}>
       <div>
@@ -319,6 +336,7 @@ const MediaGallery: React.FC = () => {
             <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>Browse and manage your family photos and videos</p>
           </div>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {loading && <span style={{ color: 'white', fontSize: '13px', opacity: 0.9 }}>Refreshing...</span>}
             <button
               onClick={() => setShowAWSUploadModal(true)}
               style={{
@@ -386,7 +404,8 @@ const MediaGallery: React.FC = () => {
             style={{
               padding: '8px 20px',
               background: filter === 'all' ? colors.primary : 'transparent',
-              color: filter === 'all' ? 'white' : colors.body,
+              color: 'white',
+              opacity: filter === 'all' ? 1 : 0.9,
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
@@ -401,7 +420,8 @@ const MediaGallery: React.FC = () => {
             style={{
               padding: '8px 20px',
               background: filter === 'image' ? colors.primary : 'transparent',
-              color: filter === 'image' ? 'white' : colors.body,
+              color: 'white',
+              opacity: filter === 'image' ? 1 : 0.9,
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
@@ -419,7 +439,8 @@ const MediaGallery: React.FC = () => {
             style={{
               padding: '8px 20px',
               background: filter === 'video' ? colors.primary : 'transparent',
-              color: filter === 'video' ? 'white' : colors.body,
+              color: 'white',
+              opacity: filter === 'video' ? 1 : 0.9,
               border: 'none',
               borderRadius: '8px',
               fontSize: '14px',
@@ -435,7 +456,7 @@ const MediaGallery: React.FC = () => {
         </div>
 
         {/* Media Grid */}
-        {loading ? (
+        {loading && filteredMedia.length === 0 ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
             <div className="spinner" />
           </div>

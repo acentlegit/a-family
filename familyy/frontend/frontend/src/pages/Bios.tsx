@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import api from '../config/api';
 import { colors } from '../styles/colors';
 import { FaUser, FaEdit, FaCheckCircle, FaTimes } from 'react-icons/fa';
+import { sortMembersByAgeDesc } from '../utils/sortMembersByAge';
 
 interface Member {
   _id: string;
@@ -12,6 +13,7 @@ interface Member {
   photo?: string;
   relationship?: string;
   dateOfBirth?: string;
+  generation?: number;
 }
 
 const Bios: React.FC = () => {
@@ -53,7 +55,7 @@ const Bios: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.get(`/bios/${selectedFamilyId}`);
-      setMembers(response.data.data || []);
+      setMembers(sortMembersByAgeDesc(response.data.data || []));
     } catch (error) {
       console.error('Error loading bios:', error);
     } finally {
@@ -81,11 +83,15 @@ const Bios: React.FC = () => {
       });
       
       // Update local state
-      setMembers(members.map(m => 
-        m._id === memberId 
-          ? { ...m, bio: editingBio }
-          : m
-      ));
+      setMembers((prevMembers) =>
+        sortMembersByAgeDesc(
+          prevMembers.map((m) =>
+            m._id === memberId
+              ? { ...m, bio: editingBio }
+              : m
+          )
+        )
+      );
       
       setEditingMemberId(null);
       setEditingBio('');

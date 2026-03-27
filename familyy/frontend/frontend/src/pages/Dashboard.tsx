@@ -5,9 +5,10 @@ import { colors } from '../styles/colors';
 import api from '../config/api';
 import { FaUsers, FaImages, FaCalendarAlt, FaPlus, FaBell, FaVideo } from 'react-icons/fa';
 
+const DASHBOARD_CACHE_KEY = 'dashboard_cache_v1';
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  console.log('🔴🔴🔴 Dashboard component is rendering! 🔴🔴🔴');
   const [stats, setStats] = useState({
     totalFamilies: 0,
     totalMembers: 0,
@@ -16,20 +17,30 @@ const Dashboard: React.FC = () => {
   });
   const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const [families, setFamilies] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFamily, setNewFamily] = useState({ name: '', description: '' });
   const [createdFamilyPasscode, setCreatedFamilyPasscode] = useState<string>('');
   const [showPasscodeModal, setShowPasscodeModal] = useState(false);
 
   useEffect(() => {
-    // Just fetch data - no redirects
-    console.log('🔍 Dashboard - Loading');
+    // Render cached data first to avoid blank/skeleton-only first paint.
+    try {
+      const cachedRaw = sessionStorage.getItem(DASHBOARD_CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (cached?.stats) setStats(cached.stats);
+        if (Array.isArray(cached?.families)) setFamilies(cached.families);
+        if (Array.isArray(cached?.recentActivities)) setRecentActivities(cached.recentActivities);
+      }
+    } catch {
+      // Ignore cache read errors and continue with network fetch.
+    }
+
     fetchDashboardData();
     
     // Listen for member added events to refresh data
     const handleMemberAdded = () => {
-      console.log('🔄 Member added, refreshing dashboard...');
       fetchDashboardData();
     };
     
@@ -41,6 +52,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   const fetchDashboardData = async () => {
+  setLoading(true);
   try {
     const res = await api.get('/dashboard'); // or '/api/dashboard'
 
@@ -55,6 +67,24 @@ const Dashboard: React.FC = () => {
 
     setFamilies(payload.families || []);
     setRecentActivities(payload.recentActivities || []);
+
+    try {
+      sessionStorage.setItem(
+        DASHBOARD_CACHE_KEY,
+        JSON.stringify({
+          stats: {
+            totalFamilies: payload.stats?.totalFamilies || 0,
+            totalMembers: payload.stats?.totalMembers || 0,
+            totalMemories: payload.stats?.totalMemories || 0,
+            totalEvents: payload.stats?.totalEvents || 0
+          },
+          families: payload.families || [],
+          recentActivities: payload.recentActivities || []
+        })
+      );
+    } catch {
+      // Ignore cache write errors.
+    }
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
   } finally {
@@ -94,16 +124,6 @@ const Dashboard: React.FC = () => {
       alert(`Error: ${errorMessage}`);
     }
   };
-
-  if (loading) {
-    return (
-      <Layout>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <div className="spinner" />
-        </div>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
@@ -280,7 +300,10 @@ const Dashboard: React.FC = () => {
           border: `1px solid ${colors.border}`,
           marginBottom: '30px'
         }}>
-          <h3 style={{ fontSize: '20px', color: colors.title, margin: '0 0 20px 0' }}>Quick Actions</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 20px 0' }}>
+            <h3 style={{ fontSize: '20px', color: colors.title, margin: 0 }}>Quick Actions</h3>
+            {loading && <span style={{ fontSize: '13px', color: colors.muted }}>Refreshing...</span>}
+          </div>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <button
               onClick={() => setShowCreateModal(true)}

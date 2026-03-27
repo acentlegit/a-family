@@ -13,7 +13,8 @@ router.get('/:familyId', protect, async (req, res) => {
     
     const members = await Member.find({ family: familyId })
       .select('firstName lastName bio photo relationship dateOfBirth')
-      .sort({ firstName: 1 });
+      .sort({ dateOfBirth: 1, firstName: 1, lastName: 1 })
+      .collation({ locale: 'en', strength: 2 });
     
     res.json({ 
       success: true, 

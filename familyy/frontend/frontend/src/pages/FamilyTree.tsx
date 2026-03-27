@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Layout from '../components/Layout';
 import api, { getApiUrl } from '../config/api';
 import { FaDownload, FaUpload, FaTree } from 'react-icons/fa';
 import { FiFile } from 'react-icons/fi';
 import { colors } from '../styles/colors';
 import D3FamilyTree, { FamilyNode } from '../components/D3FamilyTree';
+import { RELATIONSHIP_OPTIONS } from '../constants/relationshipOptions';
+import {
+  buildRelativeSelectGroupsFromPeople,
+  parseCoupleSelection
+} from '../utils/relativeSelectOptions';
 import './FamilyTree.css';
 
 interface Person {
@@ -48,6 +53,7 @@ const FamilyTree: React.FC = () => {
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [currentPhotoData, setCurrentPhotoData] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [treeFullscreen, setTreeFullscreen] = useState(false);
   const [showPersonModal, setShowPersonModal] = useState(false);
   const [modalPerson, setModalPerson] = useState<Person | null>(null);
   const [d3TreeData, setD3TreeData] = useState<FamilyNode | null>(null);
@@ -55,12 +61,8 @@ const FamilyTree: React.FC = () => {
   
   const relationshipOptions = [
     'Root Person (Start Here)',
-    'Great Grandfather', 'Great Grandmother',
-    'Grandfather', 'Grandmother', 
-    'Father', 'Mother', 'Uncle', 'Aunt',
-    'Son', 'Daughter', 'Brother', 'Sister', 'Cousin',
-    'Grandson', 'Granddaughter',
-    'Nephew', 'Niece', 'Spouse', 'Other'
+    'Myself',
+    ...RELATIONSHIP_OPTIONS.filter((r) => r !== 'Myself'),
   ];
   
   const [formData, setFormData] = useState({
@@ -74,9 +76,11 @@ const FamilyTree: React.FC = () => {
   });
 
   const treeViewRef = useRef<HTMLDivElement>(null);
+  const treePanelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const excelImportRef = useRef<HTMLInputElement>(null);
+  const [excelImporting, setExcelImporting] = useState(false);
 
   // Force re-render when tree changes
   const [treeRenderKey, setTreeRenderKey] = useState(0);
@@ -110,6 +114,14 @@ const FamilyTree: React.FC = () => {
       window.removeEventListener('memberAdded', handleMemberAdded);
     };
   }, [selectedFamilyId]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setTreeFullscreen(document.fullscreenElement === treePanelRef.current);
+    };
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
 
   // Watch for tree changes and force re-render
   useEffect(() => {
@@ -217,13 +229,24 @@ const FamilyTree: React.FC = () => {
         console.log(`🔍 Processing member ${member.firstName}: relationship="${relationship}", gender="${gender}"`);
         
         // Set generation based on relationship type
-        // Generation 1: Great Grandfather/Great Grandmother (top)
-        // Generation 2: Grandfather/Grandmother
+        // Generation 0: Great Great Grandfather/Grandmother
+        // Generation 1: Great Grandfather/Great Grandmother
+        // Generation 2: Grandfather/Grandmother, Great Uncle/Aunt
         // Generation 3: Father/Mother/Uncle/Aunt
         // Generation 4: Son/Daughter/Cousin
         // Generation 5: Grandson/Granddaughter
-        if (relationship === 'great grandfather' || relationship === 'great grandmother') {
-          member.generation = 1; // Top generation (great grandparents)
+        // Generation 6: Great Grandson/Great Granddaughter
+        if (relationship === 'great great grandfather' || relationship === 'great great grandmother') {
+          member.generation = 0;
+          if (relationship === 'great great grandfather') {
+            if (!relationshipMap['great_great_grandfathers']) relationshipMap['great_great_grandfathers'] = [];
+            relationshipMap['great_great_grandfathers'].push(member);
+          } else {
+            if (!relationshipMap['great_great_grandmothers']) relationshipMap['great_great_grandmothers'] = [];
+            relationshipMap['great_great_grandmothers'].push(member);
+          }
+        } else if (relationship === 'great grandfather' || relationship === 'great grandmother') {
+          member.generation = 1; // Great grandparents
           if (relationship === 'great grandfather') {
             if (!relationshipMap['great_grandfathers']) relationshipMap['great_grandfathers'] = [];
             relationshipMap['great_grandfathers'].push(member);
@@ -231,6 +254,10 @@ const FamilyTree: React.FC = () => {
             if (!relationshipMap['great_grandmothers']) relationshipMap['great_grandmothers'] = [];
             relationshipMap['great_grandmothers'].push(member);
           }
+        } else if (relationship === 'great uncle' || relationship === 'great aunt') {
+          member.generation = 2;
+          if (!relationshipMap['great_uncles_aunts']) relationshipMap['great_uncles_aunts'] = [];
+          relationshipMap['great_uncles_aunts'].push(member);
         } else if (relationship === 'grandfather' || relationship === 'grandmother') {
           member.generation = 2; // Grandparents generation
           if (relationship === 'grandfather') {
@@ -270,6 +297,24 @@ const FamilyTree: React.FC = () => {
             if (!relationshipMap['granddaughters']) relationshipMap['granddaughters'] = [];
             relationshipMap['granddaughters'].push(member);
           }
+        } else if (relationship === 'great grandson' || relationship === 'great granddaughter') {
+          member.generation = 6;
+          if (relationship === 'great grandson') {
+            if (!relationshipMap['great_grandsons']) relationshipMap['great_grandsons'] = [];
+            relationshipMap['great_grandsons'].push(member);
+          } else {
+            if (!relationshipMap['great_granddaughters']) relationshipMap['great_granddaughters'] = [];
+            relationshipMap['great_granddaughters'].push(member);
+          }
+        } else if (relationship === 'son-in-law' || relationship === 'daughter-in-law') {
+          member.generation = 4;
+          if (relationship === 'son-in-law') {
+            if (!relationshipMap['sons_in_law']) relationshipMap['sons_in_law'] = [];
+            relationshipMap['sons_in_law'].push(member);
+          } else {
+            if (!relationshipMap['daughters_in_law']) relationshipMap['daughters_in_law'] = [];
+            relationshipMap['daughters_in_law'].push(member);
+          }
         } else if (relationship === 'uncle' || relationship === 'aunt') {
           member.generation = 3; // Same as parents (siblings of parents)
           if (!relationshipMap['uncles_aunts']) relationshipMap['uncles_aunts'] = [];
@@ -286,6 +331,10 @@ const FamilyTree: React.FC = () => {
           member.generation = 4; // Same as children
           if (!relationshipMap['nephews_nieces']) relationshipMap['nephews_nieces'] = [];
           relationshipMap['nephews_nieces'].push(member);
+        } else if (relationship === 'myself') {
+          member.generation = 3;
+          if (!relationshipMap['others']) relationshipMap['others'] = [];
+          relationshipMap['others'].push(member);
         } else if (relationship === 'other' || !relationship) {
           // Members with "Other" or no relationship - keep existing generation or infer
           if (!relationshipMap['others']) relationshipMap['others'] = [];
@@ -305,6 +354,51 @@ const FamilyTree: React.FC = () => {
       });
       
       // Find couples at each generation level
+      // 0. Great Great Grandparents — pair, then link Great Grandparents as their children
+      if (relationshipMap['great_great_grandfathers'] && relationshipMap['great_great_grandmothers']) {
+        const gggf = relationshipMap['great_great_grandfathers'];
+        const gggm = relationshipMap['great_great_grandmothers'];
+        gggf.forEach((male: any) => {
+          if (!male.spouse) {
+            const ln = (male.lastName || '').trim();
+            const match = gggm.find(
+              (f: any) =>
+                !f.spouse &&
+                (f.lastName || '').trim() === ln &&
+                ln !== ''
+            );
+            if (match) {
+              male.spouse = match._id;
+              match.spouse = male._id;
+              console.log(`✅ Matched great great grandparents: ${male.firstName} <-> ${match.firstName}`);
+            } else {
+              const unmatched = gggm.filter((g: any) => !g.spouse);
+              if (unmatched.length === 1 && gggf.filter((g: any) => !g.spouse).length === 1) {
+                const f = unmatched[0];
+                male.spouse = f._id;
+                f.spouse = male._id;
+                console.log(`✅ Matched great great grandparents (single pair): ${male.firstName} <-> ${f.firstName}`);
+              }
+            }
+          }
+        });
+        const pairedGgf = gggf.find((g: any) => g.spouse);
+        const pairedGgm = pairedGgf
+          ? gggm.find((g: any) => g._id === pairedGgf.spouse)
+          : null;
+        if (pairedGgf && pairedGgm) {
+          const ggFathers = relationshipMap['great_grandfathers'] || [];
+          const ggMothers = relationshipMap['great_grandmothers'] || [];
+          [...ggFathers, ...ggMothers].forEach((gg: any) => {
+            if (!gg.father && !gg.mother) {
+              gg.father = pairedGgf._id;
+              gg.mother = pairedGgm._id;
+              console.log(`✅ Set great great grandparents as parents of ${gg.firstName}`);
+            }
+          });
+        }
+      }
+
       // 1. Great Grandparents (Great Grandfather + Great Grandmother) - generation 1
       // Match ALL great grandfathers with great grandmothers by last name
       if (relationshipMap['great_grandfathers'] && relationshipMap['great_grandmothers']) {
@@ -343,6 +437,23 @@ const FamilyTree: React.FC = () => {
           }
         });
       }
+
+      // Great Uncle / Great Aunt — siblings of grandfather; parents = matched great grandparents (Venkat & Lakshmi)
+      const matchedGreatGf = (relationshipMap['great_grandfathers'] || []).find((gf: any) => gf.spouse);
+      const matchedGreatGm = matchedGreatGf
+        ? (relationshipMap['great_grandmothers'] || []).find((gm: any) => gm._id === matchedGreatGf.spouse)
+        : null;
+      if (matchedGreatGf && matchedGreatGm) {
+        (relationshipMap['great_uncles_aunts'] || []).forEach((ua: any) => {
+          if (!ua.father && !ua.mother) {
+            ua.father = matchedGreatGf._id;
+            ua.mother = matchedGreatGm._id;
+            console.log(
+              `✅ Set great grandparents as parents of great uncle/aunt ${ua.firstName}`
+            );
+          }
+        });
+      }
       
       // 2. Grandparents (Grandfather + Grandmother) - generation 2
       // Match ALL grandfathers with grandmothers by last name
@@ -378,6 +489,25 @@ const FamilyTree: React.FC = () => {
                 console.log(`✅ Matched grandparents (only pair): ${grandFather.firstName} <-> ${grandMother.firstName}`);
               }
             }
+          }
+        });
+      }
+
+      // 2b. Grandparents (Suresh/Meena) are children of Great Grandparents (Venkat/Lakshmi), not of GGG.
+      // Without this, grandparents stay "disconnected" and the tree UI attaches them as extra root children → crossed/wrong lines.
+      const ggForGp = (relationshipMap['great_grandfathers'] || []).find((gf: any) => gf.spouse);
+      const ggForGm = ggForGp
+        ? (relationshipMap['great_grandmothers'] || []).find((gm: any) => gm._id === ggForGp.spouse)
+        : null;
+      if (ggForGp && ggForGm) {
+        // Only link the Grandfather (male) line — Grandmother joins via spouse to Grandfather, not as child of GG
+        (relationshipMap['grandfathers'] || []).forEach((gp: any) => {
+          if (!gp.father && !gp.mother) {
+            gp.father = ggForGp._id;
+            gp.mother = ggForGm._id;
+            console.log(
+              `✅ Set great grandparents as parents of grandfather ${gp.firstName}`
+            );
           }
         });
       }
@@ -467,6 +597,28 @@ const FamilyTree: React.FC = () => {
           children: children.map(c => c.firstName)
         });
       }
+
+      // Son-in-law / Daughter-in-law — spouse of a child, not a child of the primary couple
+      const sonsInLaw = relationshipMap['sons_in_law'] || [];
+      const daughtersInLaw = relationshipMap['daughters_in_law'] || [];
+      const sonsList = relationshipMap['sons'] || [];
+      const daughtersList = relationshipMap['daughters'] || [];
+      daughtersList.forEach((d: any, i: number) => {
+        const sil = sonsInLaw[i];
+        if (sil && !sil.spouse && !d.spouse) {
+          sil.spouse = d._id;
+          d.spouse = sil._id;
+          console.log(`✅ Matched son-in-law ${sil.firstName} <-> daughter ${d.firstName}`);
+        }
+      });
+      sonsList.forEach((s: any, i: number) => {
+        const dil = daughtersInLaw[i];
+        if (dil && !dil.spouse && !s.spouse) {
+          dil.spouse = s._id;
+          s.spouse = dil._id;
+          console.log(`✅ Matched daughter-in-law ${dil.firstName} <-> son ${s.firstName}`);
+        }
+      });
       
       // Set cousins as children of uncles/aunts
       const cousins = relationshipMap['cousins'] || [];
@@ -525,6 +677,37 @@ const FamilyTree: React.FC = () => {
           }
         }
       });
+
+      // Great-grandchildren (generation 6) — children of a grandson/granddaughter couple when possible
+      const greatGrandsons = relationshipMap['great_grandsons'] || [];
+      const greatGranddaughters = relationshipMap['great_granddaughters'] || [];
+      const greatGrandKids = [...greatGrandsons, ...greatGranddaughters];
+      const grandkidsAsParents = [...(relationshipMap['grandsons'] || []), ...(relationshipMap['granddaughters'] || [])];
+      // Prefer first male grandchild (grandson) as parents of great-grandchildren; siblings are not spouses
+      const grandsonsOnly = grandkidsAsParents.filter((p: any) =>
+        /grandson/i.test(p.relationship || '')
+      );
+      let parentLine =
+        grandsonsOnly.find((p: any) => p.spouse) ||
+        grandsonsOnly[0] ||
+        grandkidsAsParents[0];
+      greatGrandKids.forEach((ggk: any) => {
+        if (!ggk.father && !ggk.mother && parentLine) {
+          const sid = parentLine.spouse;
+          if (sid) {
+            ggk.father = parentLine._id;
+            ggk.mother = sid;
+            console.log(
+              `✅ Set ${parentLine.firstName} + spouse as parents of great-grandchild ${ggk.firstName}`
+            );
+          } else {
+            ggk.father = parentLine._id;
+            console.log(
+              `✅ Set ${parentLine.firstName} as parent of great-grandchild ${ggk.firstName}`
+            );
+          }
+        }
+      });
       
       // Handle siblings - siblings are children of the same parents
       if (primaryFather && primaryMother) {
@@ -544,6 +727,8 @@ const FamilyTree: React.FC = () => {
         const others = relationshipMap['others'] || [];
         const childrenGen = children.length > 0 ? children[0].generation : null;
         others.forEach(other => {
+          const rel = (other.relationship || '').toLowerCase();
+          if (rel.includes('in-law')) return;
           // If same generation as children and no parents, treat as sibling/child
           if ((!other.father && !other.mother) && 
               (childrenGen === null || other.generation === childrenGen || other.generation === childrenGen + 1)) {
@@ -617,7 +802,7 @@ const FamilyTree: React.FC = () => {
     // Convert API members to Person objects
     Array.from(uniqueMembers.values()).forEach((member) => {
       console.log('Processing member:', member.firstName, member.lastName, 'ID:', member._id);
-      const personId = member._id;
+      const personId = member._id != null && member._id !== '' ? String(member._id) : member._id;
       const gender = member.gender?.toLowerCase() || 'male';
       const avatar = getAvatarForGender(gender);
       
@@ -675,7 +860,7 @@ const FamilyTree: React.FC = () => {
           dateOfBirth: dateOfBirthStr,
           avatar,
           photo: photoUrl,
-          generation: member.generation || 1,
+          generation: member.generation ?? 1,
           relationship: member.relationship || undefined,
           _id: member._id,
           children: [] // Initialize children array
@@ -695,8 +880,8 @@ const FamilyTree: React.FC = () => {
       } else {
         const currentRoot = people[rootPersonId];
         const currentRootRel = (currentRoot?.generation !== undefined ? '' : ''); // We don't have relationship in Person, check member
-        const currentRootGen = currentRoot?.generation || 999;
-        const memberGen = member.generation || 1;
+        const currentRootGen = currentRoot?.generation ?? 999;
+        const memberGen = member.generation ?? 1;
         
         // Prefer Father/Mother as root
         if (isParent && (!currentRoot || currentRootGen >= memberGen)) {
@@ -713,11 +898,15 @@ const FamilyTree: React.FC = () => {
 
     // Build relationships from member data (only for unique members with relationships)
     console.log('🔗 Starting to build relationships from', uniqueMembers.size, 'members');
+    const cid = (id: any): string | null =>
+      id == null || id === '' ? null : String(id);
+
     Array.from(uniqueMembers.values()).forEach((member) => {
-      // Try multiple ways to get relationship IDs
-      const fatherId = member.father?._id || member.father || member.fatherId || null;
-      const motherId = member.mother?._id || member.mother || member.motherId || null;
-      const spouseId = member.spouse?._id || member.spouse || member.spouseId || null;
+      // Try multiple ways to get relationship IDs (normalize so ObjectId matches people{} keys)
+      const fatherId = cid(member.father?._id || member.father || member.fatherId || null);
+      const motherId = cid(member.mother?._id || member.mother || member.motherId || null);
+      const spouseId = cid(member.spouse?._id || member.spouse || member.spouseId || null);
+      const selfId = cid(member._id);
       
       console.log(`🔗 Building relationships for ${member.firstName} (ID: ${member._id}):`, {
         father: member.father,
@@ -736,19 +925,19 @@ const FamilyTree: React.FC = () => {
       if (fatherId) {
         if (people[fatherId]) {
           // IMPORTANT: Don't create parent-child if this is actually a spouse relationship
-          if (spouseId !== fatherId) {
+          if (spouseId !== fatherId && selfId) {
         relationships.push({
-          id: `rel_${member._id}_father_${fatherId}`,
+          id: `rel_${selfId}_father_${fatherId}`,
           person1Id: fatherId,
-          person2Id: member._id,
+          person2Id: selfId,
           type: 'parent-child'
         });
             // Add child to father's children array
             if (!people[fatherId].children) {
               people[fatherId].children = [];
             }
-            if (!people[fatherId].children.includes(member._id)) {
-              people[fatherId].children.push(member._id);
+            if (!people[fatherId].children.includes(selfId)) {
+              people[fatherId].children.push(selfId);
             }
             console.log(`✅ Added father relationship: ${people[fatherId]?.firstName} -> ${member.firstName}`);
           } else {
@@ -765,19 +954,19 @@ const FamilyTree: React.FC = () => {
       if (motherId) {
         if (people[motherId]) {
           // IMPORTANT: Don't create parent-child if this is actually a spouse relationship
-          if (spouseId !== motherId) {
+          if (spouseId !== motherId && selfId) {
         relationships.push({
-          id: `rel_${member._id}_mother_${motherId}`,
+          id: `rel_${selfId}_mother_${motherId}`,
           person1Id: motherId,
-          person2Id: member._id,
+          person2Id: selfId,
           type: 'parent-child'
         });
             // Add child to mother's children array
             if (!people[motherId].children) {
               people[motherId].children = [];
             }
-            if (!people[motherId].children.includes(member._id)) {
-              people[motherId].children.push(member._id);
+            if (!people[motherId].children.includes(selfId)) {
+              people[motherId].children.push(selfId);
             }
             console.log(`✅ Added mother relationship: ${people[motherId]?.firstName} -> ${member.firstName}`);
           } else {
@@ -818,36 +1007,33 @@ const FamilyTree: React.FC = () => {
       }
       
       // Handle spouse relationship - can be populated object or just ID
-      if (spouseId) {
+      if (spouseId && selfId) {
         if (people[spouseId]) {
-        // Check if relationship already exists (avoid duplicates)
-        const existingSpouseRel = relationships.find(r => 
-          r.type === 'spouse' && 
-          ((r.person1Id === member._id && r.person2Id === spouseId) ||
-           (r.person1Id === spouseId && r.person2Id === member._id))
-        );
-        if (!existingSpouseRel) {
-          relationships.push({
-            id: `rel_${member._id}_spouse_${spouseId}`,
-            person1Id: member._id,
-            person2Id: spouseId,
-            type: 'spouse'
-          });
-          // Set spouse property on both Person objects
-          if (people[member._id]) {
-            people[member._id].spouse = spouseId;
-          }
-          if (people[spouseId]) {
-            people[spouseId].spouse = member._id;
-          }
-            console.log(`✅ Added spouse relationship: ${member.firstName} <-> ${people[spouseId]?.firstName}`);
-          } else {
-            // Still set spouse property even if relationship already exists
-            if (people[member._id]) {
-              people[member._id].spouse = spouseId;
+          const existingSpouseRel = relationships.find(r =>
+            r.type === 'spouse' &&
+            ((r.person1Id === selfId && r.person2Id === spouseId) ||
+              (r.person1Id === spouseId && r.person2Id === selfId))
+          );
+          if (!existingSpouseRel) {
+            relationships.push({
+              id: `rel_${selfId}_spouse_${spouseId}`,
+              person1Id: selfId,
+              person2Id: spouseId,
+              type: 'spouse'
+            });
+            if (people[selfId]) {
+              people[selfId].spouse = spouseId;
             }
             if (people[spouseId]) {
-              people[spouseId].spouse = member._id;
+              people[spouseId].spouse = selfId;
+            }
+            console.log(`✅ Added spouse relationship: ${member.firstName} <-> ${people[spouseId]?.firstName}`);
+          } else {
+            if (people[selfId]) {
+              people[selfId].spouse = spouseId;
+            }
+            if (people[spouseId]) {
+              people[spouseId].spouse = selfId;
             }
             console.log(`✅ Spouse relationship already exists: ${member.firstName} <-> ${people[spouseId]?.firstName}`);
           }
@@ -862,6 +1048,8 @@ const FamilyTree: React.FC = () => {
     // FINAL FALLBACK: Pair people with matching relationship types and last names
     // This ensures great grandparents, grandparents, etc. are paired even if spouse wasn't set
     const relationshipPairs: { [key: string]: string[] } = {
+      'Great Great Grandfather': ['Great Great Grandmother'],
+      'Great Great Grandmother': ['Great Great Grandfather'],
       'Great Grandfather': ['Great Grandmother'],
       'Great Grandmother': ['Great Grandfather'],
       'Grandfather': ['Grandmother'],
@@ -919,39 +1107,6 @@ const FamilyTree: React.FC = () => {
         const person2 = people[rel.person2Id];
         console.log(`  - ${rel.type}: ${person1?.firstName || rel.person1Id} -> ${person2?.firstName || rel.person2Id}`);
       });
-      
-      // Update root to be the Father/Mother couple if they exist
-      // Find people who have spouse relationships and children (they are the primary couple)
-      const spouseRelationships = relationships.filter(r => r.type === 'spouse');
-      const parentChildRelationships = relationships.filter(r => r.type === 'parent-child');
-      
-      // Find the couple that has the most children (likely the primary couple)
-      const coupleChildrenCount: { [key: string]: number } = {};
-      spouseRelationships.forEach(spouseRel => {
-        const coupleKey = [spouseRel.person1Id, spouseRel.person2Id].sort().join('_');
-        const childrenCount = parentChildRelationships.filter(pc => 
-          pc.person1Id === spouseRel.person1Id || pc.person1Id === spouseRel.person2Id
-        ).length;
-        coupleChildrenCount[coupleKey] = childrenCount;
-      });
-      
-      // Find the couple with most children
-      let bestCoupleKey = '';
-      let maxChildren = 0;
-      Object.keys(coupleChildrenCount).forEach(key => {
-        if (coupleChildrenCount[key] > maxChildren) {
-          maxChildren = coupleChildrenCount[key];
-          bestCoupleKey = key;
-        }
-      });
-      
-      if (bestCoupleKey) {
-        const [p1, p2] = bestCoupleKey.split('_');
-        if (people[p1] && people[p2]) {
-          rootPersonId = p1; // Use first person of the couple as root
-          console.log(`✅ Updated root to primary couple: ${people[p1].firstName} - ${people[p2].firstName} (${maxChildren} children)`);
-        }
-      }
     } else {
       console.log('⚠️ WARNING: No relationships were created!');
       console.log('  - Total people:', Object.keys(people).length);
@@ -1133,13 +1288,13 @@ const FamilyTree: React.FC = () => {
     
     // First, find people with the LOWEST generation (these are the grandparents/oldest generation)
     const allPeople = Object.values(people);
-    const minGeneration = Math.min(...allPeople.map(p => p.generation || 0));
-    const lowestGenPeople = allPeople.filter(p => (p.generation || 0) === minGeneration);
+    const minGeneration = Math.min(...allPeople.map(p => p.generation ?? 0));
+    const lowestGenPeople = allPeople.filter(p => (p.generation ?? 0) === minGeneration);
     
     // Prefer root people (no parents) if they exist and are in the lowest generation
     const rootPeopleInLowestGen = rootPeopleIds.filter(id => {
       const person = people[id];
-      return person && (person.generation || 0) === minGeneration;
+      return person && (person.generation ?? 0) === minGeneration;
     });
     
     // Use root people in lowest generation, or all people in lowest generation
@@ -1164,7 +1319,7 @@ const FamilyTree: React.FC = () => {
       }
     } else {
       // Fallback: use lowest generation from all people
-      const sortedPeople = allPeople.sort((a, b) => (a.generation || 0) - (b.generation || 0));
+      const sortedPeople = allPeople.sort((a, b) => (a.generation ?? 0) - (b.generation ?? 0));
       if (sortedPeople.length > 0) {
         rootPersonId = sortedPeople[0].id;
         const spouseId = spouseMap[rootPersonId];
@@ -1529,13 +1684,45 @@ const FamilyTree: React.FC = () => {
         }
         generation = 0; // Root should be generation 0
         relationshipValue = gender === 'male' ? 'Father' : 'Mother';
+      } else if (relationshipType === 'Myself') {
+        const hasMyself = Object.values(familyTree.people).some(
+          (p) => (p.relationship || '') === 'Myself'
+        );
+        if (hasMyself) {
+          alert(
+            'Only one "Myself" is allowed per tree. Edit that member on the Members page if needed.'
+          );
+          return;
+        }
+        relationshipValue = 'Myself';
+        generation = 3;
       } else {
         if (!relativeId) {
           alert('Please select a relative!');
           return;
         }
 
-        const relative = familyTree.people[relativeId];
+        let coupleFather = '';
+        let coupleMother = '';
+        let primaryRelativeId = relativeId;
+        if (relativeId.startsWith('couple:')) {
+          const paired = parseCoupleSelection(relativeId, (id) => familyTree.people[id]);
+          if (!paired) {
+            alert('Invalid couple selection.');
+            return;
+          }
+          if (relationshipType !== 'Son' && relationshipType !== 'Daughter') {
+            alert('Couple selection is only for Son or Daughter (child of both parents). Pick one person, or change relationship type.');
+            return;
+          }
+          coupleFather = paired.fatherId;
+          coupleMother = paired.motherId;
+          primaryRelativeId = coupleFather;
+        }
+
+        const relative =
+          familyTree.people[primaryRelativeId] ||
+          familyTree.people[relativeId];
         if (!relative) {
           alert('Selected relative not found!');
           return;
@@ -1544,7 +1731,7 @@ const FamilyTree: React.FC = () => {
         // Handle different relationship types
         if (relationshipType === 'Spouse') {
           generation = relative.generation;
-          spouseId = relativeId;
+          spouseId = primaryRelativeId;
         } else if (relationshipType === 'Father' || relationshipType === 'Mother') {
           // Parent of the selected relative
           generation = relative.generation - 1;
@@ -1552,11 +1739,11 @@ const FamilyTree: React.FC = () => {
           if (relative.gender === 'male') {
             // Relative is male, so this person should be their parent
             // Check if relative has a spouse - if yes, spouse's parents become this person's parents
-            const relativeSpouse = getSpouse(relativeId);
+            const relativeSpouse = getSpouse(primaryRelativeId);
             if (relativeSpouse) {
               // Try to find relative's parents
               const relativeParents = Object.values(familyTree.people).filter(p => 
-                p.children?.includes(relativeId)
+                p.children?.includes(primaryRelativeId)
               );
               if (relativeParents.length > 0) {
                 const maleParent = relativeParents.find(p => p.gender === 'male');
@@ -1589,10 +1776,10 @@ const FamilyTree: React.FC = () => {
             }
             
             // Priority 1: Check if the relative is a child of this grandparent
-            const relativePerson = familyTree.people[relativeId];
+            const relativePerson = familyTree.people[primaryRelativeId];
             if (relativePerson) {
               const pChildren = p.children || [];
-              const isRelativeAChild = pChildren.includes(relativeId);
+              const isRelativeAChild = pChildren.includes(primaryRelativeId);
               
               if (isRelativeAChild) {
                 console.log(`  ✅ Found matching grandparent - relative ${relativePerson.firstName} is their child: ${p.firstName} ${p.lastName}`);
@@ -1635,7 +1822,7 @@ const FamilyTree: React.FC = () => {
           }
           // Find relative's grandparents for parent relationships
           const relativeParents = Object.values(familyTree.people).filter(p => 
-            p.children?.includes(relativeId)
+            p.children?.includes(primaryRelativeId)
           );
           if (relativeParents.length > 0) {
             const grandParent = relativeParents[0];
@@ -1692,10 +1879,10 @@ const FamilyTree: React.FC = () => {
             // Priority 1: Check if they share children - strongest indicator of a couple
             // If the relative (person we're adding relative to) is a child of this great grandparent,
             // and we're adding the spouse, they should be paired
-            const relativePerson = familyTree.people[relativeId];
+            const relativePerson = familyTree.people[primaryRelativeId];
             if (relativePerson) {
               const pChildren = p.children || [];
-              const isRelativeAChild = pChildren.includes(relativeId);
+              const isRelativeAChild = pChildren.includes(primaryRelativeId);
               
               if (isRelativeAChild) {
                 console.log(`  ✅ Found matching great grandparent - relative ${relativePerson.firstName} is their child: ${p.firstName} ${p.lastName}`);
@@ -1740,18 +1927,26 @@ const FamilyTree: React.FC = () => {
             console.log(`ℹ️ No matching ${matchingRel} found for ${relationshipType} at generation ${generation}`);
           }
         } else if (relationshipType === 'Son' || relationshipType === 'Daughter') {
-          generation = relative.generation + 1;
-          if (relative.gender === 'male') {
-            fatherId = relativeId;
-            const spouse = getSpouse(relativeId);
-            if (spouse) {
-              motherId = spouse.id;
-            }
+          if (coupleFather && coupleMother) {
+            fatherId = coupleFather;
+            motherId = coupleMother;
+            const g1 = familyTree.people[coupleFather]?.generation ?? 0;
+            const g2 = familyTree.people[coupleMother]?.generation ?? 0;
+            generation = Math.max(g1, g2) + 1;
           } else {
-            motherId = relativeId;
-            const spouse = getSpouse(relativeId);
-            if (spouse) {
-              fatherId = spouse.id;
+            generation = relative.generation + 1;
+            if (relative.gender === 'male') {
+              fatherId = primaryRelativeId;
+              const spouse = getSpouse(primaryRelativeId);
+              if (spouse) {
+                motherId = spouse.id;
+              }
+            } else {
+              motherId = primaryRelativeId;
+              const spouse = getSpouse(primaryRelativeId);
+              if (spouse) {
+                fatherId = spouse.id;
+              }
             }
           }
         } else if (relationshipType === 'Grandson' || relationshipType === 'Granddaughter') {
@@ -1760,14 +1955,14 @@ const FamilyTree: React.FC = () => {
           const relativeChildren = Object.values(familyTree.people).filter(p => {
             const pFather = p.children?.some(c => {
               const child = familyTree.people[c];
-              return child && (child.children?.includes(relativeId) || c === relativeId);
+              return child && (child.children?.includes(primaryRelativeId) || c === primaryRelativeId);
             });
             return pFather;
           });
           // If relative has children, this person is a grandchild of relative
           // Find the child who would be the parent
           const potentialParent = Object.values(familyTree.people).find(p => 
-            p.children?.includes(relativeId) || 
+            p.children?.includes(primaryRelativeId) || 
             (relative.children && relative.children.includes(p.id))
           );
           if (potentialParent) {
@@ -1787,7 +1982,7 @@ const FamilyTree: React.FC = () => {
           // If relative is a parent, uncle/aunt is sibling of that parent
           // Find relative's parents to determine uncle/aunt's parents (same as relative's parents)
           const relativeParents = Object.values(familyTree.people).filter(p => 
-            p.children?.includes(relativeId)
+            p.children?.includes(primaryRelativeId)
           );
           if (relativeParents.length > 0) {
             // Relative has parents, so uncle/aunt shares those same parents
@@ -1807,7 +2002,7 @@ const FamilyTree: React.FC = () => {
           generation = relative.generation + 1;
           // Find relative's sibling who would be the parent
           const relativeParents = Object.values(familyTree.people).filter(p => 
-            p.children?.includes(relativeId)
+            p.children?.includes(primaryRelativeId)
           );
           if (relativeParents.length > 0) {
             const parent = relativeParents[0];
@@ -1838,7 +2033,7 @@ const FamilyTree: React.FC = () => {
           // Sibling - same generation, same parents
           generation = relative.generation;
           const relativeParents = Object.values(familyTree.people).filter(p => 
-            p.children?.includes(relativeId)
+            p.children?.includes(primaryRelativeId)
           );
           if (relativeParents.length > 0) {
             const maleParent = relativeParents.find(p => p.gender === 'male');
@@ -1850,7 +2045,7 @@ const FamilyTree: React.FC = () => {
           // Cousin is child of uncle/aunt, so same generation as child of parent's sibling
           // Find relative's parents
           const relativeParents = Object.values(familyTree.people).filter(p => 
-            p.children?.includes(relativeId)
+            p.children?.includes(primaryRelativeId)
           );
           if (relativeParents.length > 0) {
             generation = relative.generation;
@@ -2169,6 +2364,21 @@ const FamilyTree: React.FC = () => {
     setResetTrigger(prev => prev + 1);
   };
 
+  const toggleTreeFullscreen = async () => {
+    const el = treePanelRef.current;
+    if (!el) return;
+    try {
+      if (!document.fullscreenElement) {
+        await el.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.error('Fullscreen error:', err);
+      alert('Full screen could not be started. Try again or use your browser’s full-screen option.');
+    }
+  };
+
   const exportTree = () => {
     const dataStr = JSON.stringify(familyTree, null, 2);
     const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -2236,11 +2446,19 @@ const FamilyTree: React.FC = () => {
         const updatedMembers: any[] = [];
         const errors: string[] = [];
 
-        // Sort people by generation (parents first, then children)
+        // Sort people by age first (elders first), then generation.
         const sortedPeople = Object.values(people).sort((a: any, b: any) => {
+          const aDob = a?.dateOfBirth ? new Date(a.dateOfBirth).getTime() : Number.POSITIVE_INFINITY;
+          const bDob = b?.dateOfBirth ? new Date(b.dateOfBirth).getTime() : Number.POSITIVE_INFINITY;
+          if (aDob !== bDob) return aDob - bDob;
+
           const genA = a.generation || 0;
           const genB = b.generation || 0;
-          return genA - genB;
+          if (genA !== genB) return genA - genB;
+
+          const aName = `${a?.firstName || ''} ${a?.lastName || ''}`.trim().toLowerCase();
+          const bName = `${b?.firstName || ''} ${b?.lastName || ''}`.trim().toLowerCase();
+          return aName.localeCompare(bName);
         });
 
         // Helper function to map relationship to valid enum value
@@ -2565,6 +2783,7 @@ const FamilyTree: React.FC = () => {
     formData.append('file', file);
 
     try {
+      setExcelImporting(true);
       const response = await api.post(`/families/${selectedFamilyId}/import-excel`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
@@ -2576,10 +2795,11 @@ const FamilyTree: React.FC = () => {
     } catch (error: any) {
       console.error('Error importing Excel:', error);
       alert(error.response?.data?.message || 'Error importing Excel file');
+    } finally {
+      setExcelImporting(false);
+      // Reset file input
+      e.target.value = '';
     }
-
-    // Reset file input
-    e.target.value = '';
   };
 
   const renderPersonCard = (person: Person) => {
@@ -3022,7 +3242,12 @@ const FamilyTree: React.FC = () => {
   const generations = new Set(Object.values(familyTree.people).map(p => p.generation));
   const couples = familyTree.relationships.filter(r => r.type === 'spouse').length;
 
-  const availablePeople = Object.values(familyTree.people);
+  const relativeSelectGroups = useMemo(
+    () => buildRelativeSelectGroupsFromPeople(familyTree.people),
+    [familyTree.people]
+  );
+  const showCoupleRelativeOptions =
+    formData.relationshipType === 'Son' || formData.relationshipType === 'Daughter';
 
   return (
     <Layout selectedFamily={families.find(f => f._id === selectedFamilyId)}>
@@ -3211,19 +3436,39 @@ const FamilyTree: React.FC = () => {
               </select>
             </div>
 
-            {formData.relationshipType !== 'Root Person (Start Here)' && (
+            {formData.relationshipType !== 'Root Person (Start Here)' &&
+              formData.relationshipType !== 'Myself' && (
               <div className="form-group">
-                <label>Select Relative:</label>
+                <label>
+                  Select relative{showCoupleRelativeOptions ? ' (pick a couple for child of both parents)' : ''}:
+                </label>
                 <select 
                   value={formData.relativeId}
                   onChange={(e) => setFormData({ ...formData, relativeId: e.target.value })}
                 >
                   <option value="">Select a relative...</option>
-                  {availablePeople.map(person => (
-                    <option key={person.id} value={person.id}>
-                      {person.firstName} {person.lastName}
-                    </option>
-                  ))}
+                  {showCoupleRelativeOptions && relativeSelectGroups.couples.length > 0 && (
+                    <optgroup label="Couples">
+                      {relativeSelectGroups.couples.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup
+                    label={
+                      showCoupleRelativeOptions
+                        ? 'Individuals (one parent — spouse filled if linked)'
+                        : 'Family members'
+                    }
+                  >
+                    {relativeSelectGroups.individuals.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
             )}
@@ -3234,9 +3479,13 @@ const FamilyTree: React.FC = () => {
             <div className="flow-guide">
               <h4>📋 Building Flow:</h4>
               <ol>
-                <li>Add <strong>Father & Mother</strong> (Root)</li>
+                <li>
+                  Add <strong>Myself</strong> (you in the tree) or <strong>Root</strong> parents to start
+                </li>
                 <li>Add <strong>Spouse</strong> to Father/Mother</li>
-                <li>Add <strong>Children</strong> to couple</li>
+                <li>
+                  Add <strong>Son/Daughter</strong> — pick a <strong>couple</strong> (e.g. Venkat & Lakshmi) or one parent
+                </li>
                 <li>Add <strong>Spouse</strong> to children</li>
                 <li>Add <strong>Grandchildren</strong></li>
                 <li>Continue the pattern ⬇️</li>
@@ -3267,10 +3516,16 @@ const FamilyTree: React.FC = () => {
               <button 
                 className="btn-import" 
                 onClick={() => excelImportRef.current?.click()}
-                style={{ marginBottom: '10px' }}
+                style={{ marginBottom: '10px', opacity: excelImporting ? 0.75 : 1 }}
+                disabled={excelImporting}
               >
-                <FaUpload style={{ marginRight: '8px' }} /> Import Excel
+                <FaUpload style={{ marginRight: '8px' }} /> {excelImporting ? 'Importing Excel...' : 'Import Excel'}
               </button>
+              {excelImporting && (
+                <div style={{ color: '#0f766e', fontSize: '13px', marginBottom: '10px', fontWeight: 600 }}>
+                  Import in progress... please wait, this can take a few seconds.
+                </div>
+              )}
               <button 
                 className="btn-export" 
                 onClick={handleExportExcel}
@@ -3288,11 +3543,18 @@ const FamilyTree: React.FC = () => {
           </div>
 
           {/* Right Panel: Tree Visualization */}
-          <div className="tree-panel">
+          <div className="tree-panel" ref={treePanelRef}>
             <div className="tree-controls">
-              <button onClick={zoomIn}>🔍 Zoom In</button>
-              <button onClick={zoomOut}>🔍 Zoom Out</button>
-              <button onClick={resetZoom}>↺ Reset</button>
+              <button type="button" onClick={zoomIn}>🔍 Zoom In</button>
+              <button type="button" onClick={zoomOut}>🔍 Zoom Out</button>
+              <button type="button" onClick={resetZoom}>↺ Reset</button>
+              <button
+                type="button"
+                onClick={toggleTreeFullscreen}
+                title={treeFullscreen ? 'Exit full screen (Esc)' : 'Expand tree to full screen'}
+              >
+                {treeFullscreen ? '✕ Exit full screen' : '⛶ Full screen'}
+              </button>
             </div>
             
             <div className="tree-container" ref={treeViewRef} key={`tree-${treeRenderKey}-${Object.keys(familyTree.people).length}-${familyTree.relationships.length}`}>

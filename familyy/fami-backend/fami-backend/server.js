@@ -8,6 +8,7 @@ const path = require("path");
 const fs = require("fs");
 
 dotenv.config();
+const env = require("./config/env");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -40,44 +41,35 @@ app.use(rateLimit({
    ENV CONFIG
 ========================= */
 
-const PORT = process.env.PORT || 5000;
-// BASE_URL is REQUIRED in production - no fallback
-const BASE_URL = process.env.BASE_URL || (process.env.NODE_ENV === 'production' ? (() => {
-  console.error('❌ BASE_URL environment variable is required in production!');
-  process.exit(1);
-  return '';
-})() : 'http://localhost:5000');
-
-// MongoDB URI - REQUIRED in production
-const MONGODB_URI = process.env.MONGODB_URI;
-if (!MONGODB_URI && process.env.NODE_ENV === "production") {
-  console.error("❌ MONGODB_URI environment variable is required in production!");
-  process.exit(1);
-}
-const MONGODB_URI_FINAL = MONGODB_URI || "mongodb://localhost:27017/fami"; // Only for development
+const { PORT, BASE_URL, CLIENT_URL, MONGODB_URI, isProduction } = env;
 
 /* =========================
    CLEAN PRODUCTION CORS
 ========================= */
 
 // Get allowed origins from environment - REQUIRED in production
-const CLIENT_URL = process.env.CLIENT_URL;
+// Browsers send Origin without a trailing slash; normalize so .env can use either form
 const S3_BUCKET_URL = process.env.S3_BUCKET_URL || "";
 
-if (!CLIENT_URL && process.env.NODE_ENV === "production") {
-  console.error("❌ CLIENT_URL environment variable is required in production!");
-  process.exit(1);
+function normalizeCorsOrigin(url) {
+  if (!url || typeof url !== "string") return "";
+  const t = url.trim();
+  if (!t) return "";
+  return t.replace(/\/+$/, "");
 }
 
 const allowedOrigins = [
-  "https://www.fami.live",
-  "https://fami.live",
-  "http://fami.live",
-  CLIENT_URL,
-  S3_BUCKET_URL,
-  // Only include localhost in development
-  ...(process.env.NODE_ENV !== 'production' ? ["http://localhost:3000", "http://127.0.0.1:3000"] : [])
-].filter(Boolean); // Remove empty strings
+  ...new Set(
+    [
+      "https://www.fami.live",
+      "https://fami.live",
+      "http://fami.live",
+      normalizeCorsOrigin(CLIENT_URL),
+      normalizeCorsOrigin(S3_BUCKET_URL),
+      ...(!isProduction ? ["http://localhost:3000", "http://127.0.0.1:3000"] : [])
+    ].filter(Boolean)
+  )
+];
 
 /* =========================
    CORS MIDDLEWARE - Handle OPTIONS FIRST (before everything else)
@@ -90,11 +82,11 @@ app.use((req, res, next) => {
     // Always set CORS headers for OPTIONS preflight requests
     if (origin) {
       // In development, allow localhost origins
-      if (process.env.NODE_ENV !== 'production' && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))) {
+      if (!isProduction && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1'))) {
         res.setHeader('Access-Control-Allow-Origin', origin);
       } else if (allowedOrigins.includes(origin)) {
         res.setHeader('Access-Control-Allow-Origin', origin);
-      } else if (process.env.NODE_ENV === 'production') {
+      } else if (isProduction) {
         // In production, reject unknown origins
         return res.status(403).json({ success: false, message: 'Origin not allowed' });
       } else {
@@ -165,7 +157,7 @@ app.use(cors({
     }
 
     // In development, allow localhost origins
-    if (process.env.NODE_ENV !== 'production') {
+    if (!isProduction) {
       if (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1')) {
         return callback(null, true);
       }
@@ -178,7 +170,7 @@ app.use(cors({
     
     console.log("❌ CORS blocked:", origin);
     // In development, still allow but log warning
-    if (process.env.NODE_ENV !== 'production') {
+    if (!isProduction) {
       console.log("⚠️  Allowing in development mode");
       return callback(null, true);
     }
@@ -194,6 +186,21 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Lightweight API timing logs (opt-in via LOG_API_TIMINGS=true)
+if (process.env.LOG_API_TIMINGS === "true") {
+  app.use((req, res, next) => {
+    if (!req.path.startsWith("/api")) {
+      return next();
+    }
+    const startedAt = Date.now();
+    res.on("finish", () => {
+      const elapsedMs = Date.now() - startedAt;
+      console.log(`[api-timing] ${req.method} ${req.originalUrl} ${res.statusCode} ${elapsedMs}ms`);
+    });
+    next();
+  });
+}
 
 /* =========================
    ROUTES - Register after CORS middleware
@@ -287,7 +294,7 @@ app.use("/preview", express.static(generatedSitesPath, {
 ========================= */
 
 mongoose
-  .connect(MONGODB_URI_FINAL, {
+  .connect(MONGODB_URI, {
     serverSelectionTimeoutMS: 10000
   })
   .then(() => {
@@ -378,10 +385,10 @@ app.use((err, req, res, next) => {
   // Prepare error response
   const errorResponse = {
     success: false,
-    message: process.env.NODE_ENV === 'production' 
+    message: isProduction
       ? 'Internal server error' 
       : err.message || 'An error occurred',
-    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+    ...(!isProduction && { stack: err.stack })
   };
   
   res.status(statusCode).json(errorResponse);
@@ -412,13 +419,21 @@ process.on('unhandledRejection', (err) => {
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception:', err);
-  // Graceful shutdown
-  process.exit(1);
+  // Do not force-exit here; exiting causes PM2 restart loops and log flooding.
+  // Keep process alive and rely on explicit route/error handling.
 });
 
 /* =========================
    START SERVER
 ========================= */
+
+server.on("error", (err) => {
+  if (err && err.code === "EADDRINUSE") {
+    console.error(`❌ Port ${PORT} is already in use. Ensure only one backend instance is running.`);
+    return;
+  }
+  console.error("❌ Server startup error:", err);
+});
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 API running on port ${PORT}`);

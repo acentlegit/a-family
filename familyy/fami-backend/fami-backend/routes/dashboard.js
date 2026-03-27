@@ -11,37 +11,71 @@ const Member = require('../models/Member');
 
 
 router.get('/', protect, async (req, res) => {
-
-
+  const startedAt = Date.now();
   try {
-    const families = await Family.find().lean();
+    const userId = req.user?._id;
+    const families = await Family.find({ 'members.user': userId })
+      .select('_id name description coverImage members createdAt updatedAt')
+      .lean();
     const familyIds = families.map(f => f._id);
 
-    const [memories, events, members] = await Promise.all([
-      Memory.find({ family: { $in: familyIds } }).lean(),
-      Event.find({ family: { $in: familyIds } }).lean(),
-      Member.find({ family: { $in: familyIds } }).lean()
+    if (familyIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          stats: {
+            totalFamilies: 0,
+            totalMembers: 0,
+            totalMemories: 0,
+            totalEvents: 0
+          },
+          families: [],
+          recentActivities: []
+        }
+      });
+    }
+
+    const [totalMemories, totalEvents, totalMembers, recentMemories, recentEvents] = await Promise.all([
+      Memory.countDocuments({ family: { $in: familyIds } }),
+      Event.countDocuments({ family: { $in: familyIds } }),
+      Member.countDocuments({ family: { $in: familyIds } }),
+      Memory.find({ family: { $in: familyIds } })
+        .select('title createdAt family')
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .lean(),
+      Event.find({ family: { $in: familyIds } })
+        .select('title date family')
+        .sort({ date: -1 })
+        .limit(8)
+        .lean()
     ]);
 
     const stats = {
       totalFamilies: families.length,
-      totalMembers: members.length,
-      totalMemories: memories.length,
-      totalEvents: events.length
+      totalMembers: totalMembers,
+      totalMemories: totalMemories,
+      totalEvents: totalEvents
     };
 
+    const familyNameMap = new Map(
+      families.map((f) => [String(f._id), f.name])
+    );
+
     const activities = [
-      ...memories.map(m => ({
+      ...recentMemories.map(m => ({
         type: 'memory',
         title: m.title,
         date: m.createdAt,
-        familyId: m.family
+        familyId: m.family,
+        familyName: familyNameMap.get(String(m.family)) || 'Family'
       })),
-      ...events.map(e => ({
+      ...recentEvents.map(e => ({
         type: 'event',
         title: e.title,
         date: e.date,
-        familyId: e.family
+        familyId: e.family,
+        familyName: familyNameMap.get(String(e.family)) || 'Family'
       }))
     ]
       .sort((a, b) => new Date(b.date) - new Date(a.date))
@@ -55,6 +89,11 @@ router.get('/', protect, async (req, res) => {
         recentActivities: activities
       }
     });
+
+    if (process.env.LOG_API_TIMINGS === 'true') {
+      const elapsedMs = Date.now() - startedAt;
+      console.log(`[dashboard] user=${req.user?._id} families=${families.length} elapsed_ms=${elapsedMs}`);
+    }
 
   } catch (error) {
     console.error('Dashboard error:', error);

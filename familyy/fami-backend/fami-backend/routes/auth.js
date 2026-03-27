@@ -7,15 +7,9 @@ const { protect } = require('../middleware/auth');
 const sendEmail = require('../utils/email');
 const getClientUrl = require('../utils/getClientUrl');
 const crypto = require('crypto');
+const { JWT_SECRET } = require('../config/env');
 
-// JWT Secret - REQUIRED in production
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET && process.env.NODE_ENV === 'production') {
-  console.error('❌ JWT_SECRET environment variable is required in production!');
-  process.exit(1);
-}
-// Use a safe default JWT secret in development if none is provided.
-const JWT_SECRET_FINAL = JWT_SECRET || 'dev_jwt_secret_change_me';
+const JWT_SECRET_FINAL = JWT_SECRET;
 
 // Note: Rate limiting is applied at the server level for /api/auth routes
 
@@ -134,9 +128,6 @@ router.post('/register', [
       // Add query parameter to indicate user came from email (so login page doesn't pre-fill default credentials)
       const loginUrl = `${clientUrl}/login?from=email`;
       
-      console.log('📧 Welcome email - Client URL:', clientUrl);
-      console.log('📧 Welcome email - Login URL:', loginUrl);
-      
       const emailText = `Welcome to Fami, ${user.firstName}!
 
 Thank you for registering with Fami - Your Family Connection Platform.
@@ -212,9 +203,8 @@ The Fami Team`;
           </div>
         `
       });
-      console.log('✅ Welcome email sent to:', user.email);
     } catch (emailError) {
-      console.error('❌ Error sending welcome email:', emailError);
+      console.error('❌ Error sending welcome email:', emailError.message || emailError);
       // Don't fail registration if email fails
     }
 
@@ -246,17 +236,9 @@ router.post('/login', [
   body('password').notEmpty().withMessage('Password is required')
 ], async (req, res) => {
   try {
-    // Debug: Log the entire request to see what we're receiving
-    console.log('🔍 Login - Request received');
-    console.log('🔍 Login - Request body:', JSON.stringify(req.body));
-    console.log('🔍 Login - Request headers:', JSON.stringify(req.headers));
-    console.log('🔍 Login - Content-Type:', req.headers['content-type']);
-    console.log('🔍 Login attempt for:', req.body?.email || 'NO EMAIL IN BODY');
-    
     // Check MongoDB connection - wait if connecting
     const mongoose = require('mongoose');
     if (mongoose.connection.readyState === 0 || mongoose.connection.readyState === 3) {
-      console.log('❌ Login - Database not connected');
       return res.status(503).json({ 
         success: false, 
         message: 'Database connection unavailable. Please try again in a moment.' 
@@ -265,7 +247,6 @@ router.post('/login', [
     
     // If connecting (state 2), wait a bit for connection
     if (mongoose.connection.readyState === 2) {
-      console.log('⏳ Login - Waiting for database connection...');
       // Wait up to 5 seconds for connection
       let attempts = 0;
       while (mongoose.connection.readyState !== 1 && attempts < 10) {
@@ -274,7 +255,6 @@ router.post('/login', [
       }
       
       if (mongoose.connection.readyState !== 1) {
-        console.log('❌ Login - Database connection timeout');
         return res.status(503).json({ 
           success: false, 
           message: 'Database connection is still establishing. Please try again in a moment.' 
@@ -284,7 +264,6 @@ router.post('/login', [
 
     // Check if request body exists
     if (!req.body || typeof req.body !== 'object') {
-      console.log('❌ Login - Request body is missing or invalid');
       return res.status(400).json({ 
         success: false, 
         message: 'Invalid request format. Please ensure Content-Type is application/json.',
@@ -303,13 +282,11 @@ router.post('/login', [
       // Only trim if password starts AND ends with space (likely accidental)
       if (originalPassword.startsWith(' ') && originalPassword.endsWith(' ')) {
         req.body.password = originalPassword.trim();
-        console.log('⚠️  Login - Trimmed password (had spaces on both ends)');
       }
     }
     
     // Additional check: ensure fields are not empty after trimming
     if (!req.body.email || req.body.email === '') {
-      console.log('❌ Login - Email is empty after trimming');
       return res.status(400).json({ 
         success: false, 
         message: 'Username or email is required',
@@ -318,7 +295,6 @@ router.post('/login', [
     }
     
     if (!req.body.password || req.body.password === '') {
-      console.log('❌ Login - Password is empty after trimming');
       return res.status(400).json({ 
         success: false, 
         message: 'Password is required',
@@ -328,9 +304,6 @@ router.post('/login', [
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('❌ Login - Validation errors:', errors.array());
-      console.log('❌ Login - Email received:', req.body.email || 'UNDEFINED');
-      console.log('❌ Login - Password received:', req.body.password ? '***' : 'MISSING');
       return res.status(400).json({ 
         success: false, 
         message: errors.array()[0].msg || 'Validation failed',
@@ -355,12 +328,10 @@ router.post('/login', [
     const adminPassword = process.env.ADMIN_USER_PASSWORD || '';
     const isAdminUser = adminEmail && email.toLowerCase() === adminEmail.toLowerCase() && !isSuperAdminUser;
 
-    console.log('🔍 Login - Looking up user:', email);
     let user = await User.findOne({ email: email.toLowerCase() }).select('+password');
     
     // If default user doesn't exist, create it
     if (isDefaultUser && !user && defaultUserPassword) {
-      console.log('🔍 Login - Creating default user...');
       const defaultFirstName = process.env.DEFAULT_USER_FIRST_NAME || 'Default';
       const defaultLastName = process.env.DEFAULT_USER_LAST_NAME || 'User';
       
@@ -371,12 +342,10 @@ router.post('/login', [
         lastName: defaultLastName,
         role: 'USER'
       });
-      console.log('✅ Login - Default user created');
     }
     
     // If super admin user doesn't exist, create it (check this FIRST since it shares email with admin)
     if (isSuperAdminUser && !user && superAdminPassword) {
-      console.log('🔍 Login - Creating super admin user...');
       const superAdminFirstName = process.env.SUPER_ADMIN_FIRST_NAME || 'Admin';
       const superAdminLastName = process.env.SUPER_ADMIN_LAST_NAME || 'User';
       
@@ -387,12 +356,10 @@ router.post('/login', [
         lastName: superAdminLastName,
         role: 'SUPER_ADMIN'
       });
-      console.log('✅ Login - Super admin user created');
     }
     
     // If admin user doesn't exist, create it (only if not super admin)
     if (isAdminUser && !user && adminPassword) {
-      console.log('🔍 Login - Creating admin user...');
       const adminFirstName = process.env.ADMIN_USER_FIRST_NAME || 'Chandra';
       const adminLastName = process.env.ADMIN_USER_LAST_NAME || 'Acentle';
       
@@ -403,18 +370,13 @@ router.post('/login', [
         lastName: adminLastName,
         role: 'ADMIN'
       });
-      console.log('✅ Login - Admin user created');
     }
     
     if (!user) {
-      console.log('❌ Login - User not found:', email);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
     
     // Verify password - try multiple methods to handle variations
-    console.log('🔍 Login - Verifying password for:', email);
-    console.log('🔍 Login - User role:', user.role);
-    
     let isMatch = false;
     const passwordVariations = [];
     
@@ -442,7 +404,6 @@ router.post('/login', [
         const match = await user.comparePassword(pwd);
         if (match) {
           isMatch = true;
-          console.log('✅ Login - Password verified (bcrypt)');
           break;
         }
       }
@@ -464,11 +425,9 @@ router.post('/login', [
         for (const pwd of passwordVariations) {
           if (pwd === envPwd || pwd.trim() === envPwd) {
             isMatch = true;
-            console.log('✅ Login - Password verified (env comparison)');
             // Update password in database to ensure it's hashed correctly
             user.password = envPwd;
             await user.save({ validateBeforeSave: false });
-            console.log('✅ Login - Password updated in database');
             break;
           }
         }
@@ -476,11 +435,9 @@ router.post('/login', [
     }
     
     if (!isMatch) {
-      console.log('❌ Login - Invalid password for:', email);
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    console.log('✅ Login - Password verified, generating tokens...');
     // Generate tokens
     const accessToken = generateToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
@@ -502,7 +459,6 @@ router.post('/login', [
       isSuperAdmin: user.isSuperAdmin || user.role === 'SUPER_ADMIN'
     };
 
-    console.log('✅ Login - Success for:', email, 'Role:', userResponse.role);
     res.json({
       success: true,
       token: accessToken,
@@ -510,7 +466,7 @@ router.post('/login', [
       user: userResponse
     });
   } catch (error) {
-    console.error('❌ Login - Server error:', error);
+    console.error('❌ Login server error:', error.message || error);
     res.status(500).json({ success: false, message: error.message || 'Server error during login' });
   }
 });
@@ -612,6 +568,27 @@ const avatarUpload = multer({
   }
 });
 
+const homepageStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, 'homepage-' + Date.now() + '-' + Math.round(Math.random() * 1e9) + path.extname(file.originalname));
+  }
+});
+
+const homepageUpload = multer({
+  storage: homepageStorage,
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
+
 // @route   POST /api/auth/upload-avatar
 // @desc    Upload user avatar
 // @access  Private
@@ -635,6 +612,172 @@ router.post('/upload-avatar', protect, avatarUpload.single('avatar'), async (req
   } catch (error) {
     console.error('Error uploading avatar:', error);
     res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   GET /api/auth/public/site-homepage
+// @desc    Latest published homepage (anonymous visitors see the same branded page)
+// @access  Public
+router.get('/public/site-homepage', async (req, res) => {
+  try {
+    const users = await User.find({
+      'homepageCustomization.status': 'published',
+      'homepageCustomization.enabled': true
+    })
+      .sort({ 'homepageCustomization.updatedAt': -1 })
+      .limit(1)
+      .select('homepageCustomization')
+      .lean();
+
+    const doc = users[0];
+    const h = doc?.homepageCustomization;
+    if (!h) {
+      return res.json({ success: true, data: null });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        theme: h.theme || 'default',
+        title: h.title || '',
+        subtitle: h.subtitle || '',
+        description: h.description || '',
+        heroImage: h.heroImage || '',
+        accentColor: h.accentColor || '',
+        enabled: true,
+        status: 'published'
+      }
+    });
+  } catch (error) {
+    console.error('public site-homepage:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   GET /api/auth/homepage-customization
+// @desc    Get current user's homepage customization
+// @access  Private
+router.get('/homepage-customization', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('homepageCustomization');
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    return res.json({
+      success: true,
+      data: user.homepageCustomization || {
+        enabled: false,
+        status: 'draft',
+        theme: 'default',
+        title: '',
+        subtitle: '',
+        description: '',
+        heroImage: '',
+        accentColor: ''
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+async function handleHomepageCustomizationPut(req, res) {
+  try {
+    const { enabled, theme, title, subtitle, description, status, removeHeroImage, accentColor } = req.body;
+    const heroImageUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+
+    const validTheme = ['default', 'light', 'dark'].includes(String(theme)) ? String(theme) : 'default';
+    const validStatus = ['draft', 'published'].includes(String(status)) ? String(status) : 'draft';
+    const updatePayload = {
+      'homepageCustomization.enabled': String(enabled) === 'true' || enabled === true,
+      'homepageCustomization.status': validStatus,
+      'homepageCustomization.theme': validTheme,
+      'homepageCustomization.title': String(title || '').trim(),
+      'homepageCustomization.subtitle': String(subtitle || '').trim(),
+      'homepageCustomization.description': String(description || '').trim(),
+      'homepageCustomization.updatedAt': new Date()
+    };
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'accentColor')) {
+      const accentTrim = String(accentColor || '').trim();
+      updatePayload['homepageCustomization.accentColor'] = /^#[0-9A-Fa-f]{6}$/.test(accentTrim) ? accentTrim : '';
+    }
+
+    if (heroImageUrl) {
+      updatePayload['homepageCustomization.heroImage'] = heroImageUrl;
+    }
+    if (String(removeHeroImage) === 'true') {
+      updatePayload['homepageCustomization.heroImage'] = '';
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      updatePayload,
+      { new: true }
+    ).select('homepageCustomization');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Homepage customized successfully',
+      data: user.homepageCustomization
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+}
+
+// @route   PUT /api/auth/homepage-customization
+// @desc    Update current user's homepage customization (JSON or multipart when uploading hero)
+// @access  Private
+router.put('/homepage-customization', protect, (req, res, next) => {
+  const ct = String(req.headers['content-type'] || '');
+  if (ct.includes('multipart/form-data')) {
+    return homepageUpload.single('heroImage')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message || 'Upload failed' });
+      }
+      next();
+    });
+  }
+  next();
+}, handleHomepageCustomizationPut);
+
+// @route   POST /api/auth/homepage-customization/reset
+// @desc    Reset current user's homepage customization to default
+// @access  Private
+router.post('/homepage-customization/reset', protect, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        'homepageCustomization.enabled': false,
+        'homepageCustomization.status': 'draft',
+        'homepageCustomization.theme': 'default',
+        'homepageCustomization.title': '',
+        'homepageCustomization.subtitle': '',
+        'homepageCustomization.description': '',
+        'homepageCustomization.heroImage': '',
+        'homepageCustomization.accentColor': '',
+        'homepageCustomization.updatedAt': new Date()
+      },
+      { new: true }
+    ).select('homepageCustomization');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Homepage reset to default',
+      data: user.homepageCustomization
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
@@ -756,9 +899,8 @@ router.post('/forgot-password', [
         });
       }
 
-      console.log(`✅ Password reset email sent to: ${user.email}`);
     } catch (emailError) {
-      console.error('❌ Error sending password reset email:', emailError);
+      console.error('❌ Error sending password reset email:', emailError.message || emailError);
       user.resetPasswordToken = undefined;
       user.resetPasswordExpire = undefined;
       await user.save({ validateBeforeSave: false });
@@ -832,9 +974,8 @@ router.post('/reset-password/:token', [
         html: message,
         text: 'Your password has been successfully reset.'
       });
-      console.log(`✅ Password reset confirmation email sent to: ${user.email}`);
     } catch (emailError) {
-      console.error('❌ Error sending password reset confirmation email:', emailError);
+      console.error('❌ Error sending password reset confirmation email:', emailError.message || emailError);
       // Don't fail the request if email fails
     }
 
@@ -1032,9 +1173,8 @@ router.post('/accept-invite/:token', [
         html: message,
         text: 'Your admin account has been successfully activated.'
       });
-      console.log(`✅ Admin activation email sent to: ${user.email}`);
     } catch (emailError) {
-      console.error('❌ Error sending admin activation email:', emailError);
+      console.error('❌ Error sending admin activation email:', emailError.message || emailError);
       // Don't fail the request if email fails
     }
 

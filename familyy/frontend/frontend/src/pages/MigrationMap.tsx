@@ -47,7 +47,7 @@ const MigrationMap: React.FC = () => {
   const [locations, setLocations] = useState<MigrationLocation[]>([]);
   const [families, setFamilies] = useState<any[]>([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingLocation, setEditingLocation] = useState<MigrationLocation | null>(null);
@@ -96,6 +96,7 @@ const MigrationMap: React.FC = () => {
   }, [locations]);
 
   const fetchFamilies = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/families');
       setFamilies(response.data.data || []);
@@ -392,16 +393,6 @@ const MigrationMap: React.FC = () => {
     }
   };
 
-  if (loading && !selectedFamilyId) {
-    return (
-      <Layout>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ color: 'white' }}>Loading...</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div>
@@ -431,43 +422,48 @@ const MigrationMap: React.FC = () => {
               </select>
             )}
             {selectedFamilyId && (
-              <button
-                onClick={() => {
-                  setNewLocation({
-                    name: '',
-                    latitude: '',
-                    longitude: '',
-                    description: '',
-                    year: '',
-                    isOrigin: false,
-                    order: locations.length
-                  });
-                  setShowAddModal(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 20px',
-                  background: colors.primary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = colors.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = colors.primary;
-                }}
-              >
-                <FaPlus size={14} />
-                Add Location
-              </button>
+              <>
+                {loading && (
+                  <span style={{ color: 'white', opacity: 0.9, fontSize: '13px' }}>Refreshing...</span>
+                )}
+                <button
+                  onClick={() => {
+                    setNewLocation({
+                      name: '',
+                      latitude: '',
+                      longitude: '',
+                      description: '',
+                      year: '',
+                      isOrigin: false,
+                      order: locations.length
+                    });
+                    setShowAddModal(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 20px',
+                    background: colors.primary,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.3s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.primaryHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = colors.primary;
+                  }}
+                >
+                  <FaPlus size={14} />
+                  Add Location
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -19,7 +19,7 @@ const Timeline: React.FC = () => {
   const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
   const [families, setFamilies] = useState<any[]>([]);
   const [selectedFamilyId, setSelectedFamilyId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
@@ -37,6 +37,7 @@ const Timeline: React.FC = () => {
   }, [selectedFamilyId]);
 
   const fetchFamilies = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/families');
       setFamilies(response.data.data || []);
@@ -132,16 +133,6 @@ const Timeline: React.FC = () => {
     }
   };
 
-  if (loading && !selectedFamilyId) {
-    return (
-      <Layout>
-        <div style={{ textAlign: 'center', padding: '40px' }}>
-          <p style={{ color: 'white' }}>Loading...</p>
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout>
       <div>
@@ -171,35 +162,40 @@ const Timeline: React.FC = () => {
               </select>
             )}
             {selectedFamilyId && (
-              <button
-                onClick={() => {
-                  setNewEvent({ year: '', title: '', description: '' });
-                  setShowCreateModal(true);
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '10px 20px',
-                  background: colors.primary,
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  transition: 'all 0.3s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = colors.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = colors.primary;
-                }}
-              >
-                <FaPlus size={14} />
-                Add Event
-              </button>
+              <>
+                {loading && (
+                  <span style={{ color: 'white', opacity: 0.9, fontSize: '13px' }}>Refreshing...</span>
+                )}
+                <button
+                  onClick={() => {
+                    setNewEvent({ year: '', title: '', description: '' });
+                    setShowCreateModal(true);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 20px',
+                    background: colors.primary,
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.3s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.primaryHover;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = colors.primary;
+                  }}
+                >
+                  <FaPlus size={14} />
+                  Add Event
+                </button>
+              </>
             )}
           </div>
         </div>

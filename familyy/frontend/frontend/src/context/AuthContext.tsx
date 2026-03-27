@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import api from '../config/api';
+import { copySessionHomepageCacheToGuestStorage } from '../constants/homepageStorage';
 
 interface User {
   id: string;
@@ -40,21 +41,27 @@ interface RegisterData {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const readStoredToken = (): string | null => {
+  try {
+    return localStorage.getItem('token');
+  } catch {
+    return null;
+  }
+};
 
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
+const readStoredUser = (): User | null => {
+  try {
     const storedUser = localStorage.getItem('user');
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch {
+    return null;
+  }
+};
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
-  }, []);
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(() => readStoredUser());
+  const [token, setToken] = useState<string | null>(() => readStoredToken());
+  const [loading, setLoading] = useState(false);
 
   const login = async (email: string, password: string) => {
     setLoading(true);
@@ -201,6 +208,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = () => {
+    // Keep homepage look on this device after logout (guest view uses localStorage)
+    copySessionHomepageCacheToGuestStorage();
+
     // Clear localStorage immediately
     localStorage.removeItem('token');
     localStorage.removeItem('user');

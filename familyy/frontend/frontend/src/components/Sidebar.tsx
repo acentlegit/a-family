@@ -22,6 +22,27 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
   const [families, setFamilies] = useState<any[]>([]);
   const [showFamilies, setShowFamilies] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const preloadedRoutes = React.useRef(new Set<string>());
+
+  const routePreloaders: Record<string, () => Promise<any>> = {
+    '/dashboard': () => import('../pages/Dashboard'),
+    '/families': () => import('../pages/Families'),
+    '/members': () => import('../pages/Members'),
+    '/family-tree': () => import('../pages/FamilyTree'),
+    '/timeline': () => import('../pages/Timeline'),
+    '/migration-map': () => import('../pages/MigrationMap'),
+    '/memories': () => import('../pages/Memories'),
+    '/media': () => import('../pages/MediaGallery'),
+    '/events': () => import('../pages/Events'),
+    '/video-calls': () => import('../pages/VideoCalls'),
+    '/bios': () => import('../pages/Bios'),
+    '/blog': () => import('../pages/Blog'),
+    '/notifications': () => import('../pages/Notifications'),
+    '/settings': () => import('../pages/Settings'),
+    '/admin-dashboard': () => import('../pages/AdminDashboard'),
+    '/super-admin': () => import('../pages/SuperAdmin'),
+    '/website-admin': () => import('../pages/WebsiteAdmin'),
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -60,6 +81,16 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
     console.log('🔍 Sidebar - Clicking Super Admin, navigating to /super-admin');
     navigate('/super-admin');
   }, [navigate]);
+
+  const preloadRoute = useCallback((path: string) => {
+    if (preloadedRoutes.current.has(path)) return;
+    const preloader = routePreloaders[path];
+    if (!preloader) return;
+    preloadedRoutes.current.add(path);
+    preloader().catch(() => {
+      preloadedRoutes.current.delete(path);
+    });
+  }, []);
 
   const menuItems = [
     { path: '/dashboard', icon: MdDashboard, label: 'Dashboard' },
@@ -199,6 +230,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
                       overflow: 'hidden'
                     }}
                     onMouseEnter={(e) => {
+                      preloadRoute(item.path);
                       e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
                       e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
                       e.currentTarget.style.transform = 'translateX(5px)';
@@ -322,6 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({ selectedFamily }) => {
                   overflow: 'hidden'
                 }}
                 onMouseEnter={(e) => {
+                  preloadRoute(item.path);
                   e.currentTarget.style.background = 'rgba(255,255,255,0.25)';
                   e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
                   e.currentTarget.style.transform = 'translateX(5px)';

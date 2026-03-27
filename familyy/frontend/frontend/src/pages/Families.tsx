@@ -1,15 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { colors } from '../styles/colors';
 import api, { API_URL, getApiUrl } from '../config/api';
 import { FaPlus, FaUsers, FaCalendar, FaImages, FaCalendarAlt, FaEdit, FaDownload, FaUpload } from 'react-icons/fa';
 import axios from 'axios';
+import { sortMembersByAgeDesc } from '../utils/sortMembersByAge';
+
+const FAMILIES_CACHE_KEY = 'families_page_cache_v1';
 
 const Families: React.FC = () => {
   const location = useLocation();
   const [families, setFamilies] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newFamily, setNewFamily] = useState({ name: '', description: '' });
   const [selectedFamily, setSelectedFamily] = useState<any>(null);
@@ -23,7 +26,21 @@ const Families: React.FC = () => {
   const [importing, setImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const sortedFamilyMembers = useMemo(
+    () => (familyDetails?.members?.length ? sortMembersByAgeDesc(familyDetails.members) : []),
+    [familyDetails?.members]
+  );
+
   useEffect(() => {
+    try {
+      const cachedRaw = sessionStorage.getItem(FAMILIES_CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        if (Array.isArray(cached?.families)) setFamilies(cached.families);
+      }
+    } catch {
+      // Ignore cache read errors
+    }
     fetchFamilies();
   }, []);
 
@@ -45,9 +62,19 @@ const Families: React.FC = () => {
   }, [selectedFamily]);
 
   const fetchFamilies = async () => {
+    setLoading(true);
     try {
       const response = await api.get('/families');
-      setFamilies(response.data.data);
+      const fetchedFamilies = response.data.data || [];
+      setFamilies(fetchedFamilies);
+      try {
+        sessionStorage.setItem(
+          FAMILIES_CACHE_KEY,
+          JSON.stringify({ families: fetchedFamilies })
+        );
+      } catch {
+        // Ignore cache write errors
+      }
     } catch (error) {
       console.error('Error fetching families:', error);
     } finally {
@@ -453,7 +480,7 @@ const Families: React.FC = () => {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '16px' }}>
-                {familyDetails.members.map((member: any) => (
+                {sortedFamilyMembers.map((member: any) => (
                   <div
                     key={member._id}
                     style={{
@@ -463,26 +490,43 @@ const Families: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       gap: '12px',
-                      position: 'relative'
+                      position: 'relative',
+                      minWidth: 0
                     }}
                   >
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: colors.primary,
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '18px',
-                      fontWeight: '600'
-                    }}>
-                      {member.user?.firstName?.[0] || member.email?.[0] || 'M'}
+                    <div
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        minWidth: '48px',
+                        minHeight: '48px',
+                        flexShrink: 0,
+                        aspectRatio: '1',
+                        borderRadius: '50%',
+                        background: colors.primary,
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {(member.firstName?.[0] || member.user?.firstName?.[0] || member.email?.[0] || 'M').toUpperCase()}
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <h4 style={{ margin: 0, color: '#000', fontSize: '15px', fontWeight: '600' }}>
-                        {member.user?.firstName || member.email}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <h4
+                        style={{
+                          margin: 0,
+                          color: '#000',
+                          fontSize: '15px',
+                          fontWeight: '600',
+                          overflowWrap: 'anywhere',
+                          wordBreak: 'break-word'
+                        }}
+                      >
+                        {member.firstName || member.user?.firstName || member.email}
                       </h4>
                       <p style={{ margin: 0, color: '#333', fontSize: '13px' }}>
                         {member.role} {member.relationship ? `• ${member.relationship}` : ''}
@@ -603,16 +647,6 @@ const Families: React.FC = () => {
     );
   }
 
-  if (loading) {
-    return (
-      <Layout>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <div className="spinner" />
-        </div>
-      </Layout>
-    );
-  }
-
   return (
     <Layout selectedFamily={families[0]}>
       <div>
@@ -620,6 +654,7 @@ const Families: React.FC = () => {
         <div style={{ marginBottom: '24px' }}>
           <h2 style={{ fontSize: '28px', color: 'white', margin: '0 0 8px 0', fontWeight: '600' }}>My Families</h2>
           <p style={{ color: 'white', margin: 0, opacity: 0.9 }}>View and manage all your family groups</p>
+          {loading && <p style={{ color: 'white', margin: '8px 0 0 0', opacity: 0.9, fontSize: '13px' }}>Refreshing...</p>}
         </div>
 
         {/* Stats Cards */}
@@ -804,7 +839,7 @@ const Families: React.FC = () => {
           ))}
         </div>
 
-        {families.length === 0 && (
+        {families.length === 0 && !loading && (
           <div style={{
             background: colors.cardBg,
             padding: '60px',

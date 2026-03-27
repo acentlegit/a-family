@@ -1,37 +1,50 @@
-import Login from './pages/Login';
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
-
-// Pages
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import AcceptInvite from './pages/AcceptInvite';
 import Dashboard from './pages/Dashboard';
 import Families from './pages/Families';
 import Members from './pages/Members';
 import FamilyTree from './pages/FamilyTree';
+import Timeline from './pages/Timeline';
+import MigrationMap from './pages/MigrationMap';
 import Memories from './pages/Memories';
 import MediaGallery from './pages/MediaGallery';
 import Events from './pages/Events';
 import VideoCalls from './pages/VideoCalls';
 import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
-import AdminPanel from './pages/AdminPanel';
-import AdminDashboard from './pages/AdminDashboard';
-import SuperAdmin from './pages/SuperAdmin';
-import Onboarding from './pages/Onboarding';
-import GoogleDriveCallback from './pages/GoogleDriveCallback';
-import WebsiteAdmin from './pages/WebsiteAdmin';
-import Bios from './pages/Bios';
-import Blog from './pages/Blog';
-import Homepage from './pages/Homepage';
-import Timeline from './pages/Timeline';
-import MigrationMap from './pages/MigrationMap';
+
+// Pages
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const AcceptInvite = lazy(() => import('./pages/AcceptInvite'));
+const AdminPanel = lazy(() => import('./pages/AdminPanel'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
+const GoogleDriveCallback = lazy(() => import('./pages/GoogleDriveCallback'));
+const WebsiteAdmin = lazy(() => import('./pages/WebsiteAdmin'));
+const Bios = lazy(() => import('./pages/Bios'));
+const Blog = lazy(() => import('./pages/Blog'));
+const Homepage = lazy(() => import('./pages/Homepage'));
 
 const queryClient = new QueryClient();
+
+const RouteLoadingFallback: React.FC = () => (
+  <div
+    style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '40vh'
+    }}
+  >
+    <div className="spinner" />
+  </div>
+);
 
 const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { token, loading } = useAuth();
@@ -53,7 +66,7 @@ const PrivateRoute: React.FC<{ children: React.ReactElement }> = ({ children }) 
   const hasToken = token || localStorage.getItem('token');
   
   if (!hasToken) {
-    
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -147,182 +160,184 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <Routes>
-            <Route path="/" element={<Homepage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password/:token" element={<ResetPassword />} />
-            <Route path="/accept-invite/:token" element={<AcceptInvite />} />
-            <Route
-              path="/super-admin"
-              element={
-                <PrivateRoute>
-                  <SuperAdmin />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin-dashboard"
-              element={
-                <PrivateRoute>
-                  <AdminDashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <PrivateRoute>
-                  <Dashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/families"
-              element={
-                <PrivateRoute>
-                  <Families />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/members"
-              element={
-                <PrivateRoute>
-                  <Members />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/family-tree"
-              element={
-                <PrivateRoute>
-                  <FamilyTree />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/timeline"
-              element={
-                <PrivateRoute>
-                  <Timeline />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/migration-map"
-              element={
-                <PrivateRoute>
-                  <MigrationMap />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/memories"
-              element={
-                <PrivateRoute>
-                  <Memories />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/media"
-              element={
-                <PrivateRoute>
-                  <MediaGallery />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/events"
-              element={
-                <PrivateRoute>
-                  <Events />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/video-calls"
-              element={
-                <PrivateRoute>
-                  <VideoCalls />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <PrivateRoute>
-                  <Settings />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <PrivateRoute>
-                  <Notifications />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <PrivateRoute>
-                  <AdminPanel />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/admin/:familyId"
-              element={
-                <PrivateRoute>
-                  <AdminPanel />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/website-admin"
-              element={
-                <AdminRoute>
-                  <WebsiteAdmin />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/website-admin/:familyId"
-              element={
-                <AdminRoute>
-                  <WebsiteAdmin />
-                </AdminRoute>
-              }
-            />
-            <Route
-              path="/bios"
-              element={
-                <PrivateRoute>
-                  <Bios />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/blog"
-              element={
-                <PrivateRoute>
-                  <Blog />
-                </PrivateRoute>
-              }
-            />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route
-              element={
-                <PrivateRoute>
-                  <GoogleDriveCallback />
-                </PrivateRoute>
-              }
-            />
-          </Routes>
+          <Suspense fallback={<RouteLoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Homepage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password/:token" element={<ResetPassword />} />
+              <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+              <Route
+                path="/super-admin"
+                element={
+                  <PrivateRoute>
+                    <SuperAdmin />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin-dashboard"
+                element={
+                  <PrivateRoute>
+                    <AdminDashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/dashboard"
+                element={
+                  <PrivateRoute>
+                    <Dashboard />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/families"
+                element={
+                  <PrivateRoute>
+                    <Families />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/members"
+                element={
+                  <PrivateRoute>
+                    <Members />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/family-tree"
+                element={
+                  <PrivateRoute>
+                    <FamilyTree />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/timeline"
+                element={
+                  <PrivateRoute>
+                    <Timeline />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/migration-map"
+                element={
+                  <PrivateRoute>
+                    <MigrationMap />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/memories"
+                element={
+                  <PrivateRoute>
+                    <Memories />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/media"
+                element={
+                  <PrivateRoute>
+                    <MediaGallery />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/events"
+                element={
+                  <PrivateRoute>
+                    <Events />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/video-calls"
+                element={
+                  <PrivateRoute>
+                    <VideoCalls />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <PrivateRoute>
+                    <Settings />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <PrivateRoute>
+                    <Notifications />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <PrivateRoute>
+                    <AdminPanel />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/admin/:familyId"
+                element={
+                  <PrivateRoute>
+                    <AdminPanel />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/website-admin"
+                element={
+                  <AdminRoute>
+                    <WebsiteAdmin />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/website-admin/:familyId"
+                element={
+                  <AdminRoute>
+                    <WebsiteAdmin />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/bios"
+                element={
+                  <PrivateRoute>
+                    <Bios />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/blog"
+                element={
+                  <PrivateRoute>
+                    <Blog />
+                  </PrivateRoute>
+                }
+              />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route
+                element={
+                  <PrivateRoute>
+                    <GoogleDriveCallback />
+                  </PrivateRoute>
+                }
+              />
+            </Routes>
+          </Suspense>
         </Router>
       </AuthProvider>
     </QueryClientProvider>
