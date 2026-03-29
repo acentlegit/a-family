@@ -71,10 +71,14 @@ const Register: React.FC = () => {
       }
 
       // SUCCESS PATH
-      setSuccess('Account created successfully! Redirecting to login...');
-      setTimeout(() => {
-        navigate('/login');
-      }, 1500);
+      if (data?.pendingApproval) {
+        setSuccess('Registration submitted. Your account is pending admin approval. You will receive an email once approved.');
+      } else {
+        setSuccess('Account created successfully! Redirecting to login...');
+        setTimeout(() => {
+          navigate('/login');
+        }, 1500);
+      }
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');
     } finally {

@@ -5,6 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import { FaUser, FaBell, FaLock, FaShieldAlt, FaCog } from 'react-icons/fa';
 import api, { getApiUrl } from '../config/api';
 
+// Normalize and join URLs safely to avoid malformed origins like "https:/.fami.live"
+const API_ORIGIN =
+  (process.env.REACT_APP_API_BASE || '').replace(/\/api$/, '') || 'https://api.fami.live';
+
+const normalizeUrl = (raw: string): string => {
+  if (!raw) return '';
+  const cleaned = raw
+    .replace('https:/.fami.live/api', 'https://api.fami.live')
+    .replace('http://localhost:5000', 'https://api.fami.live');
+  return new URL(cleaned, API_ORIGIN).href.replace(/([^:]\/)\/+/g, '$1');
+};
+
 const Settings: React.FC = () => {
   const { user, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState('profile');
@@ -445,9 +457,7 @@ const Settings: React.FC = () => {
                         }
                         
                         // Always construct URL using current API base URL to ensure it works
-                        const apiUrl = getApiUrl();
-                        const baseUrl = apiUrl.replace('/api', '');
-                        const finalUrl = `${baseUrl}/uploads/${filename}`;
+                        const finalUrl = normalizeUrl(`/uploads/${filename}`);
                         
                         console.log('✅ Extracted filename:', filename);
                         console.log('✅ Constructed final URL using current API base:', finalUrl);

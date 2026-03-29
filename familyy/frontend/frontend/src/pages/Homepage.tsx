@@ -569,8 +569,7 @@ const Homepage: React.FC = () => {
 
   const handleResetCustomization = async () => {
     if (!isLoggedIn) {
-      localStorage.removeItem(GUEST_HOMEPAGE_STORAGE_KEY);
-      setCustomization({
+      const defaultPayload: HomepageCustomization = {
         enabled: false,
         status: 'draft',
         theme: 'default',
@@ -579,7 +578,14 @@ const Homepage: React.FC = () => {
         description: '',
         heroImage: '',
         accentColor: ''
-      });
+      };
+      // Persist an explicit "default" guest payload so refresh does not re-apply any published public homepage
+      try {
+        persistHomepageAsGuestBackup(guestPayloadFromCustomization(defaultPayload));
+      } catch {
+        /* ignore */
+      }
+      setCustomization(defaultPayload);
       setDisplayPrefs({
         heroOverlay: 0.35,
         showFeaturesAside: true,

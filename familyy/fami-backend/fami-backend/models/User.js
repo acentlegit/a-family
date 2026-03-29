@@ -31,6 +31,13 @@ const userSchema = new mongoose.Schema({
   verificationToken: String,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  // Admin approval for new registrations
+  isApproved: { type: Boolean, default: false, index: true },
+  approvalToken: String, // hashed
+  approvalOtp: String, // hashed 6-digit
+  approvalExpiresAt: Date,
+  approvedAt: Date,
+  approvedByEmail: String,
   notifications: {
     emailNotifications: { type: Boolean, default: true },
     pushNotifications: { type: Boolean, default: true },
@@ -114,5 +121,10 @@ userSchema.methods.isAdmin = function() {
 userSchema.methods.checkIsSuperAdmin = function() {
   return this.role === 'SUPER_ADMIN' || this.isSuperAdmin === true;
 };
+
+// Indexes
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ isApproved: 1 });
+userSchema.index({ approvalExpiresAt: 1 }, { expireAfterSeconds: 0, partialFilterExpression: { isApproved: false } });
 
 module.exports = mongoose.model('User', userSchema);

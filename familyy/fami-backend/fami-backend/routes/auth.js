@@ -66,7 +66,7 @@ router.post('/check-default-user', async (req, res) => {
 });
 
 // @route   POST /api/auth/register
-// @desc    Register user
+// @desc    Register user (requires admin approval before login)
 // @access  Public
 router.post('/register', [
   body('email').isEmail().withMessage('Please provide a valid email'),
@@ -105,122 +105,64 @@ router.post('/register', [
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
-    // SECURITY: Force role to USER for public signup
-    // Never accept role from frontend - admins are created via invite only
+    // SECURITY: Force role to USER for public signup; mark unapproved
+    const { SUPPORT_EMAIL, BASE_URL } = require('../config/env');
+    const clientUrl = getClientUrl();
+    const approvalWindowMs = Number(process.env.APPROVAL_EXPIRES_MS || (24 * 60 * 60 * 1000)); // 24h default
+
+    // Create approval token and OTP (store hashed)
+    const tokenRaw = crypto.randomBytes(32).toString('hex');
+    const tokenHashed = crypto.createHash('sha256').update(tokenRaw).digest('hex');
+    const otpRaw = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit
+    const otpHashed = crypto.createHash('sha256').update(otpRaw).digest('hex');
+    const expiresAt = new Date(Date.now() + approvalWindowMs);
+
     user = await User.create({
       email,
       password,
       firstName,
       lastName,
-      role: 'USER' // Always USER for public signup
+      role: 'USER',
+      isApproved: false,
+      approvalToken: tokenHashed,
+      approvalOtp: otpHashed,
+      approvalExpiresAt: expiresAt
     });
 
-    // Generate tokens
-    const accessToken = generateToken(user._id);
-    const refreshToken = generateRefreshToken(user._id);
-    
-    // Store refresh token
-    await storeRefreshToken(user._id, refreshToken);
-
-    // Send welcome email
+    // Send admin approval email
     try {
-      const clientUrl = getClientUrl();
-      // Add query parameter to indicate user came from email (so login page doesn't pre-fill default credentials)
-      const loginUrl = `${clientUrl}/login?from=email`;
-      
-      const emailText = `Welcome to Fami, ${user.firstName}!
-
-Thank you for registering with Fami - Your Family Connection Platform.
-
-Your account has been successfully created with the following details:
-Name: ${user.firstName} ${user.lastName}
-Email: ${user.email}
-
-You can now:
-- Create or join families
-- Add family members
-- Share memories and photos
-- Organize family events
-- Connect with your loved ones
-
-Get started by logging in to your account and creating your first family!
-
-═══════════════════════════════════════════════════════════
-  LOGIN LINK - CLICK OR COPY THIS URL:
-═══════════════════════════════════════════════════════════
-
-${loginUrl}
-
-═══════════════════════════════════════════════════════════
-
-Click the link above or copy and paste it into your browser to login.
-
-Best regards,
-The Fami Team`;
+      const approveUrl = `${BASE_URL}/api/auth/approve-registration?token=${tokenRaw}`;
+      const denyUrl = `${BASE_URL}/api/auth/deny-registration?token=${tokenRaw}`;
+      const fallbackUrl = `${clientUrl}/admin/approve-user?email=${encodeURIComponent(user.email)}`;
 
       await sendEmail({
-        to: user.email,
-        subject: 'Welcome to Fami - Registration Successful!',
-        text: emailText,
+        to: SUPPORT_EMAIL,
+        subject: `New registration pending approval: ${user.firstName} ${user.lastName}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <h2 style="color: #6366f1;">Welcome to Fami, ${user.firstName}!</h2>
-            <p>Thank you for registering with Fami - Your Family Connection Platform.</p>
-            <p>Your account has been successfully created with the following details:</p>
-            <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
-              <p style="margin: 5px 0;"><strong>Name:</strong> ${user.firstName} ${user.lastName}</p>
-              <p style="margin: 5px 0;"><strong>Email:</strong> ${user.email}</p>
+            <h2 style="color: #111827;">New Registration Requires Approval</h2>
+            <p><strong>Name:</strong> ${user.firstName} ${user.lastName}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>OTP:</strong> <span style="font-family: monospace; font-size: 18px;">${otpRaw}</span> (expires in ${Math.floor(approvalWindowMs/3600000)} hours)</p>
+            <div style="margin: 24px 0;">
+              <a href="${approveUrl}" style="display:inline-block;background:#16a34a;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;margin-right:12px;">Approve</a>
+              <a href="${denyUrl}" style="display:inline-block;background:#dc2626;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;">Deny</a>
             </div>
-            <p>You can now:</p>
-            <ul>
-              <li>Create or join families</li>
-              <li>Add family members</li>
-              <li>Share memories and photos</li>
-              <li>Organize family events</li>
-              <li>Connect with your loved ones</li>
-            </ul>
-            <p style="font-size: 18px; font-weight: 600; margin: 25px 0;"><strong>Get started by logging in to your account and creating your first family!</strong></p>
-            
-            <div style="text-align: center; margin: 35px 0; padding: 25px; background: #f0f4ff; border: 2px solid #6366f1; border-radius: 12px;">
-              <p style="margin: 0 0 15px 0; font-weight: 600; color: #1e40af; font-size: 16px;">Click here to login:</p>
-              <a href="${loginUrl}" style="display: inline-block; background: #6366f1; color: white !important; padding: 16px 40px; text-decoration: none !important; border-radius: 8px; font-weight: 700; font-size: 18px; margin: 10px 0;">Login to Your Account</a>
-            </div>
-            
-            <div style="text-align: center; margin: 25px 0; padding: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
-              <p style="margin: 0 0 10px 0; font-weight: 600; color: #856404; font-size: 16px;">Or copy this login link:</p>
-              <p style="margin: 0; padding: 12px; background: white; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 16px;">
-                <a href="${loginUrl}" style="color: #6366f1 !important; text-decoration: underline !important; font-weight: 600;">${loginUrl}</a>
-              </p>
-            </div>
-            
-            <p style="text-align: center; margin: 30px 0; padding: 15px; background: #e0f2fe; border-left: 4px solid #0284c7; font-size: 16px;">
-              <strong>Login URL:</strong><br>
-              <span style="font-family: monospace; color: #0284c7; font-weight: 600; font-size: 14px;">${loginUrl}</span>
-            </p>
-            
-            <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 20px;">Click the button above or copy and paste the link into your browser to login.</p>
-            <p style="margin-top: 30px;">Best regards,<br>The Fami Team</p>
+            <p>If buttons don't work, use the fallback page and enter the OTP:</p>
+            <p><a href="${fallbackUrl}">${fallbackUrl}</a></p>
           </div>
-        `
+        `,
+        text: `New registration:\nName: ${user.firstName} ${user.lastName}\nEmail: ${user.email}\nOTP: ${otpRaw}\nApprove: ${approveUrl}\nDeny: ${denyUrl}\nFallback: ${fallbackUrl}`
       });
     } catch (emailError) {
-      console.error('❌ Error sending welcome email:', emailError.message || emailError);
-      // Don't fail registration if email fails
+      console.error('❌ Error sending admin approval email:', emailError.message || emailError);
     }
 
+    // Respond to user: pending approval
     res.status(201).json({
       success: true,
-      token: accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        avatar: user.avatar,
-        role: user.role,
-        isSuperAdmin: user.isSuperAdmin || user.role === 'SUPER_ADMIN'
-      }
+      message: 'Registration submitted. An admin must approve your account via email.',
+      pendingApproval: true
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
@@ -340,7 +282,12 @@ router.post('/login', [
         password: defaultUserPassword,
         firstName: defaultFirstName,
         lastName: defaultLastName,
-        role: 'USER'
+        role: 'USER',
+        isApproved: true,
+        approvedAt: new Date(),
+        approvalToken: undefined,
+        approvalOtp: undefined,
+        approvalExpiresAt: undefined
       });
     }
     
@@ -354,7 +301,12 @@ router.post('/login', [
         password: superAdminPassword,
         firstName: superAdminFirstName,
         lastName: superAdminLastName,
-        role: 'SUPER_ADMIN'
+        role: 'SUPER_ADMIN',
+        isApproved: true,
+        approvedAt: new Date(),
+        approvalToken: undefined,
+        approvalOtp: undefined,
+        approvalExpiresAt: undefined
       });
     }
     
@@ -368,12 +320,25 @@ router.post('/login', [
         password: adminPassword,
         firstName: adminFirstName,
         lastName: adminLastName,
-        role: 'ADMIN'
+        role: 'ADMIN',
+        isApproved: true,
+        approvedAt: new Date(),
+        approvalToken: undefined,
+        approvalOtp: undefined,
+        approvalExpiresAt: undefined
       });
     }
     
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    
+    // Block login for unapproved users (but always allow env-defined default/admin/superadmin)
+    if (user && user.isApproved === false && !(isDefaultUser || isAdminUser || isSuperAdminUser)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is pending admin approval.'
+      });
     }
     
     // Verify password - try multiple methods to handle variations
@@ -1377,3 +1342,98 @@ router.get('/active-family', protect, async (req, res) => {
 });
 
 module.exports = router;
+
+// Approval endpoints (public via emailed token or OTP)
+// @route   GET /api/auth/approve-registration
+// @desc    Approve a pending user via token
+// @access  Public (link sent to admin email)
+router.get('/approve-registration', async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ success: false, message: 'Missing token' });
+
+    const hashed = require('crypto').createHash('sha256').update(String(token)).digest('hex');
+    const user = await User.findOne({
+      approvalToken: hashed,
+      isApproved: false,
+      approvalExpiresAt: { $gt: Date.now() }
+    });
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+
+    user.isApproved = true;
+    user.approvedAt = new Date();
+    user.approvalToken = undefined;
+    user.approvalOtp = undefined;
+    user.approvalExpiresAt = undefined;
+    user.approvedByEmail = (process.env.ADMIN_USER_EMAIL || process.env.SUPPORT_EMAIL || '').toLowerCase() || undefined;
+    await user.save({ validateBeforeSave: false });
+
+    // Optionally notify the user of approval
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your Fami account has been approved',
+        text: 'Your account is approved. You can now login.',
+        html: '<p>Your account is approved. You can now login.</p>'
+      });
+    } catch {}
+
+    return res.json({ success: true, message: 'User approved successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   POST /api/auth/approve-registration
+// @desc    Approve a pending user via email + OTP
+// @access  Public (admin submits OTP)
+router.post('/approve-registration', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+    }
+    const user = await User.findOne({ email: String(email).toLowerCase(), isApproved: false });
+    if (!user || !user.approvalOtp || !user.approvalExpiresAt || user.approvalExpiresAt < Date.now()) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+    const hashed = require('crypto').createHash('sha256').update(String(otp)).digest('hex');
+    if (hashed !== user.approvalOtp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+    user.isApproved = true;
+    user.approvedAt = new Date();
+    user.approvalToken = undefined;
+    user.approvalOtp = undefined;
+    user.approvalExpiresAt = undefined;
+    user.approvedByEmail = (process.env.ADMIN_USER_EMAIL || process.env.SUPPORT_EMAIL || '').toLowerCase() || undefined;
+    await user.save({ validateBeforeSave: false });
+    return res.json({ success: true, message: 'User approved successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   GET /api/auth/deny-registration
+// @desc    Deny a pending user via token
+// @access  Public (link sent to admin email)
+router.get('/deny-registration', async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).json({ success: false, message: 'Missing token' });
+
+    const hashed = require('crypto').createHash('sha256').update(String(token)).digest('hex');
+    const user = await User.findOne({
+      approvalToken: hashed,
+      isApproved: false,
+      approvalExpiresAt: { $gt: Date.now() }
+    });
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+
+    // For deny, we can delete the account or simply expire approval
+    await User.deleteOne({ _id: user._id });
+    return res.json({ success: true, message: 'User registration denied and removed' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});

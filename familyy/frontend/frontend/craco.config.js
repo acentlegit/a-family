@@ -1,4 +1,7 @@
 module.exports = {
+  eslint: {
+    enable: false, // Disable CRA ESLint integration to avoid eslint-loader requirement
+  },
   style: {
     postcss: {
       mode: 'extends',

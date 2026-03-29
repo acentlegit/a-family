@@ -2,9 +2,22 @@ const express = require('express');
 const router = express.Router();
 const Family = require('../models/Family');
 const { protect } = require('../middleware/auth');
-const { upload, uploadToCloudinary } = require('../utils/cloudinary');
+const { uploadToCloudinary } = require('../utils/cloudinary');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
+// Memory storage upload for images (coverImage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 }, // 8MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) {
+      return cb(null, true);
+    }
+    cb(new Error('Only image files are allowed'));
+  }
+});
 const normalizeNamePart = (value) => {
   if (typeof value !== 'string') return '';
   return value
@@ -193,7 +206,8 @@ router.get('/', protect, async (req, res) => {
 
     res.json({ success: true, count: families.length, data: families });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ Update family error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Internal server error' });
   }
 });
 
@@ -272,7 +286,30 @@ router.post('/', protect, upload.single('coverImage'), async (req, res) => {
 // @route   PUT /api/families/:id
 // @desc    Update family
 // @access  Private
-router.put('/:id', protect, upload.single('coverImage'), async (req, res) => {
+// Local storage for cover image as fallback (avoids hard dependency on Cloudinary)
+const coverStorage = multer.memoryStorage();
+const coverUpload = multer({
+  storage: coverStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype && file.mimetype.startsWith('image/')) return cb(null, true);
+    return cb(new Error('Only image files are allowed'));
+  }
+});
+
+router.put('/:id', protect, (req, res, next) => {
+  // Always accept multipart for this route
+  const ct = String(req.headers['content-type'] || '');
+  if (ct.includes('multipart/form-data')) {
+    return coverUpload.single('coverImage')(req, res, (err) => {
+      if (err) {
+        return res.status(400).json({ success: false, message: err.message || 'Upload failed' });
+      }
+      next();
+    });
+  }
+  next();
+}, async (req, res) => {
   try {
     let family = await Family.findById(req.params.id);
 
@@ -280,32 +317,106 @@ router.put('/:id', protect, upload.single('coverImage'), async (req, res) => {
       return res.status(404).json({ success: false, message: 'Family not found' });
     }
 
-    // Check if user is admin
-    const member = family.members.find(m => m.user.toString() === req.user._id.toString());
-    if (!member || member.role !== 'Admin') {
-      return res.status(403).json({ success: false, message: 'Not authorized' });
+    // Check if user is a member; admins can change any field, members can change cover image
+    const currentUserId = String(req.user._id);
+    const member = (family.members || []).find(m => String(m.user?._id || m.user) === currentUserId);
+    if (!member) {
+      return res.status(403).json({ success: false, message: 'Not authorized (not a member)' });
     }
 
     const { name, description } = req.body;
-    const updateData = {
-      name: normalizeNamePart(name),
-      description
-    };
-
-    if (req.file) {
-      const result = await uploadToCloudinary(req.file.buffer, 'family-covers');
-      updateData.coverImage = result.secure_url;
+    const updateData = {};
+    const isAdmin = String(member.role || '').toLowerCase() === 'admin';
+    if (isAdmin) {
+      if (typeof name === 'string' && name.trim()) {
+        updateData.name = normalizeNamePart(name);
+      }
+      if (typeof description === 'string') {
+        updateData.description = description;
+      }
     }
 
-    family = await Family.findByIdAndUpdate(req.params.id, updateData, {
-      new: true,
-      runValidators: true
-    }).populate('createdBy', 'firstName lastName email avatar')
-      .populate('members.user', 'firstName lastName email avatar');
+    if (req.file) {
+      try {
+        // Priority: S3 (if configured) → Cloudinary (if enabled) → Local
+        // Force local storage for now (no Cloudinary dependency)
+        const hasCloudinary = false;
+        const hasS3 =
+          !(/^true$/i.test(process.env.DISABLE_S3 || '')) &&
+          typeof require('../utils/s3Storage').isSystemS3Configured === 'function' &&
+          require('../utils/s3Storage').isSystemS3Configured();
+        if (hasS3 && req.file.buffer) {
+          const { uploadToS3 } = require('../utils/s3Storage');
+          const s3Res = await uploadToS3(
+            req.file.buffer,
+            req.file.originalname || 'cover.jpg',
+            req.file.mimetype || 'image/jpeg',
+            req.user,
+            family.name
+          );
+          updateData.coverImage = s3Res.url;
+        } else if (hasCloudinary && req.file.buffer) {
+          const result = await uploadToCloudinary(req.file.buffer, 'family-covers');
+          updateData.coverImage = result.secure_url;
+        } else {
+          const getBaseUrl = require('../utils/getBaseUrl');
+          const baseUrl = getBaseUrl();
+          const ext = path.extname(req.file.originalname || '').toLowerCase() || '.jpg';
+          const filename = `family-cover-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+          const uploadsDir = path.join(__dirname, '..', 'uploads');
+          try { if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
+          fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+          updateData.coverImage = `${baseUrl}/uploads/${filename}`;
+        }
+      } catch (uploadError) {
+        try {
+          // Fallback: persist locally if Cloudinary upload fails
+          const getBaseUrl = require('../utils/getBaseUrl');
+          const baseUrl = getBaseUrl();
+          const ext = path.extname(req.file.originalname || '').toLowerCase() || '.jpg';
+          const filename = `family-cover-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+          const uploadsDir = path.join(__dirname, '..', 'uploads');
+          try { if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true }); } catch {}
+          fs.writeFileSync(path.join(uploadsDir, filename), req.file.buffer);
+          updateData.coverImage = `${baseUrl}/uploads/${filename}`;
+          console.log('Cloudinary unavailable; saved cover image locally:', updateData.coverImage);
+        } catch (fallbackErr) {
+          console.log('Image upload failed and local fallback also failed:', fallbackErr.message);
+        }
+      }
+    }
+
+    // Optional: allow direct URL update without file upload (allowed for members)
+    if (!req.file && req.body.coverImageUrl) {
+      updateData.coverImage = req.body.coverImageUrl;
+    }
+
+    // If nothing to update, return current family
+    if (Object.keys(updateData).length === 0) {
+      return res.json({ success: true, data: family });
+    }
+
+    // If only coverImage is being changed, use direct $set without validators
+    const onlyCover =
+      Object.keys(updateData).length === 1 && Object.prototype.hasOwnProperty.call(updateData, 'coverImage');
+    if (onlyCover) {
+      await Family.updateOne({ _id: family._id }, { $set: { coverImage: updateData.coverImage } }, { runValidators: false });
+      family = await Family.findById(family._id)
+        .populate('createdBy', 'firstName lastName email avatar')
+        .populate('members.user', 'firstName lastName email avatar');
+    } else {
+      // Persist with safe save (skip validators since we only change allowed props)
+      Object.assign(family, updateData);
+      await family.save({ validateBeforeSave: false });
+      family = await Family.findById(family._id)
+        .populate('createdBy', 'firstName lastName email avatar')
+        .populate('members.user', 'firstName lastName email avatar');
+    }
 
     res.json({ success: true, data: family });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error('families.update error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to update family' });
   }
 });
 

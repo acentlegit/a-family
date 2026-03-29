@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
   // Helper function to reconstruct avatar URL
   const getAvatarUrl = (avatarUrl: string | undefined): string | null => {
     if (!avatarUrl) return null;
-    
+
     // Extract filename from the URL (handle both full URLs and relative paths)
     let filename = '';
     if (avatarUrl.includes('/uploads/')) {
@@ -48,9 +48,16 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
     
     // Always construct URL using current API base URL to ensure it works
     const apiUrl = getApiUrl();
-    const baseUrl = apiUrl.replace('/api', '');
-    const finalUrl = `${baseUrl}/uploads/${filename}`;
-    
+    // Derive origin (remove trailing /api). Fallback hard to production origin if malformed.
+    let baseUrl = (apiUrl || '').replace('/api', '');
+    // Fix malformed origins like "https:/.fami.live"
+    if (!/^https?:\/\/[^/]/i.test(baseUrl)) {
+      // If missing proper scheme/host, use known production origin
+      baseUrl = 'https://api.fami.live';
+    }
+    // Join and normalize double slashes
+    const finalUrl = `${baseUrl}/uploads/${filename}`.replace(/([^:]\/)\/+/g, '$1');
+
     return finalUrl;
   };
 

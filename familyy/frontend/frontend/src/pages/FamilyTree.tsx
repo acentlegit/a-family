@@ -11,6 +11,7 @@ import {
   parseCoupleSelection
 } from '../utils/relativeSelectOptions';
 import './FamilyTree.css';
+import { useAuth } from '../context/AuthContext';
 
 interface Person {
   id: string;
@@ -40,6 +41,101 @@ interface FamilyTreeData {
   relationships: Relationship[];
   rootPersonId: string | null;
 }
+
+interface FamilyHeroImageEditorProps {
+  families: any[];
+  selectedFamilyId: string;
+  onUpdated: (updatedFamily: any) => void;
+}
+
+const FamilyHeroImageEditor: React.FC<FamilyHeroImageEditorProps> = ({ families, selectedFamilyId, onUpdated }) => {
+  const { user } = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+
+  const selectedFamily = families.find(f => f._id === selectedFamilyId);
+  const isMember = (() => {
+    if (!selectedFamily || !user) return false;
+    try {
+      const me = (selectedFamily.members || []).find((m: any) => (m.user?._id || m.user) === user.id);
+      return !!me;
+    } catch {
+      return false;
+    }
+  })();
+
+  const onPick = () => inputRef.current?.click();
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedFamily) return;
+    try {
+      setSaving(true);
+      // Step 1: upload locally using avatar endpoint (no Cloudinary dependency)
+      const up = new FormData();
+      up.append('avatar', file);
+      const uploadRes = await api.post('/auth/upload-avatar', up, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const url =
+        uploadRes.data?.user?.avatar ||
+        uploadRes.data?.url ||
+        (typeof uploadRes.data === 'string' ? uploadRes.data : '');
+      if (!url) throw new Error('Upload failed');
+      // Step 2: update family with the uploaded URL (JSON, not multipart)
+      // Some backends require 'name' on update; include existing name to avoid validation errors
+      const res = await api.put(`/families/${selectedFamily._id}`, {
+        name: (selectedFamily as any)?.name || 'Family',
+        coverImageUrl: url
+      });
+      const updated = res.data?.data || res.data;
+      if (updated) onUpdated(updated);
+    } catch (err: any) {
+      const status = err?.response?.status;
+      const msg = err?.response?.data?.message;
+      if (status === 403) {
+        alert('You must be a member of this family to change the image.');
+      } else {
+        alert(msg || 'Failed to update image. Please try again.');
+      }
+      // eslint-disable-next-line no-console
+      console.error(err);
+    } finally {
+      setSaving(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  };
+
+  // Show even if not a member; backend enforces permissions
+
+  return (
+    <div style={{ marginTop: '10px', textAlign: 'center' }}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={onFileChange}
+        style={{ display: 'none' }}
+      />
+      <button
+        onClick={onPick}
+        disabled={saving}
+        style={{
+          padding: '8px 14px',
+          background: '#ffffffc0',
+          color: '#0B2239',
+          border: '1px solid rgba(0,0,0,0.1)',
+          borderRadius: '8px',
+          fontSize: '13px',
+          fontWeight: 600,
+          cursor: saving ? 'not-allowed' : 'pointer'
+        }}
+      >
+        {saving ? 'Updating...' : 'Change Image'}
+      </button>
+    </div>
+  );
+};
 
 const FamilyTree: React.FC = () => {
   const [families, setFamilies] = useState<any[]>([]);
@@ -3253,29 +3349,47 @@ const FamilyTree: React.FC = () => {
     <Layout selectedFamily={families.find(f => f._id === selectedFamilyId)}>
       <div className="family-tree-container">
         <header>
-          <div className="family-tree-logo">
-            <div className="logo-circle">
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
-                {/* Orange circle background */}
-                <circle cx="40" cy="40" r="40" fill="#FF6B35"/>
-                {/* Top left figure (parent 1) */}
-                <circle cx="28" cy="22" r="5" fill="white"/>
-                <path d="M 28 27 Q 24 31 28 35 Q 32 31 28 27" fill="white"/>
-                {/* Top right figure (parent 2) */}
-                <circle cx="52" cy="22" r="5" fill="white"/>
-                <path d="M 52 27 Q 48 31 52 35 Q 56 31 52 27" fill="white"/>
-                {/* Horizontal line connecting parents */}
-                <line x1="28" y1="35" x2="52" y2="35" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                {/* Vertical line from center to child */}
-                <line x1="40" y1="35" x2="40" y2="45" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
-                {/* Bottom figure (child) */}
-                <circle cx="40" cy="52" r="4.5" fill="white"/>
-                <path d="M 40 56.5 Q 37 60 40 64 Q 43 60 40 56.5" fill="white"/>
-              </svg>
-            </div>
-            <h1>Family Tree</h1>
+          <div className="family-tree-hero">
+            {/* Hero image uses selected family's coverImage if available */}
+            <div
+              className="hero-image"
+              style={{
+                backgroundImage: (() => {
+                  const selectedFamily = families.find(f => f._id === selectedFamilyId);
+                  const fallbackUrl = 'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=1200&auto=format&fit=crop&q=60';
+                  let img = selectedFamily?.coverImage || '';
+                  if (!img) return `url(${fallbackUrl})`;
+                  // Ensure absolute URL to API host for relative/localhost links
+                  try {
+                    const apiBase = (window as any).ENV?.REACT_APP_API_BASE || process.env.REACT_APP_API_BASE || '';
+                    const siteBase = (apiBase || '').replace(/\/api\/?$/, '');
+                    if (img.startsWith('http://') || img.startsWith('https://')) {
+                      if (img.includes('localhost') || img.startsWith('http://')) {
+                        const u = new URL(img);
+                        return `url(${siteBase}${u.pathname})`;
+                      }
+                      return `url(${img})`;
+                    }
+                    if (siteBase) {
+                      return `url(${siteBase}${img.startsWith('/') ? '' : '/'}${img})`;
+                    }
+                    return `url(${img})`;
+                  } catch {
+                    return `url(${img})`;
+                  }
+                })()
+              }}
+            />
+            {/* Admin-only image updater */}
+            <FamilyHeroImageEditor
+              families={families}
+              selectedFamilyId={selectedFamilyId}
+              onUpdated={(updated) => {
+                setFamilies(prev => prev.map(f => f._id === updated._id ? updated : f));
+              }}
+            />
           </div>
-          <p>Build Your Family Tree Step by Step</p>
+          <p className="family-tree-subtitle">Build Your Family Tree Step by Step</p>
         </header>
 
         {/* Family Selector */}
