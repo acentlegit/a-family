@@ -1,0 +1,43 @@
+========================================
+PM2 BACKEND RESTART COMMANDS
+========================================
+
+# Navigate to backend directory
+cd /home/ubuntu/fami-backend/fami-backend
+
+# Restart backend server
+pm2 restart fami-backend
+
+# Restart with environment variable update (if .env changed)
+pm2 restart fami-backend --update-env
+
+# Check status
+pm2 status
+
+# View logs
+pm2 logs fami-server
+
+# View last 50 lines of logs
+pm2 logs fami-server --lines 50
+
+# Restart all PM2 processes
+pm2 restart all
+
+# Stop backend
+pm2 stop fami-backend
+
+# Start backend
+pm2 start fami-backend
+
+# Reload backend (zero-downtime)
+pm2 reload fami-backend
+
+# View logs
+pm2 logs fami-backend
+
+# View last 50 lines
+pm2 logs fami-backend --lines 50
+
+# Test API
+curl http://localhost:5000/api/health
+curl https://api.fami.live/api/health

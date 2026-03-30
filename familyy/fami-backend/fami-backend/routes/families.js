@@ -324,6 +324,11 @@ router.put('/:id', protect, (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized (not a member)' });
     }
 
+    // Hotfix: Preserve existing name if not provided by client to avoid validators upstream
+    if (!(typeof req.body.name === 'string' && req.body.name.trim())) {
+      req.body.name = family.name;
+    }
+
     const { name, description } = req.body;
     const updateData = {};
     const isAdmin = String(member.role || '').toLowerCase() === 'admin';

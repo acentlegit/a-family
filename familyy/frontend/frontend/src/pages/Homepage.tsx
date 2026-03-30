@@ -281,70 +281,19 @@ const Homepage: React.FC = () => {
     if (location.pathname !== '/') return;
 
     if (!isLoggedIn) {
-      let cancelled = false;
-      (async () => {
-        type GuestShape = {
-          theme?: HomepageCustomization['theme'];
-          title?: string;
-          subtitle?: string;
-          description?: string;
-          accentColor?: string;
-          heroImage?: string;
-          enabled?: boolean;
-          status?: 'draft' | 'published';
-        };
-        let pub: HomepageCustomization | null = null;
-        try {
-          const res = await api.get('/auth/public/site-homepage');
-          if (res.data?.success && res.data?.data) {
-            pub = res.data.data as HomepageCustomization;
-          }
-        } catch {
-          // offline / misconfigured API
-        }
-        if (cancelled) return;
-        let guest: GuestShape | null = null;
-        try {
-          const raw = localStorage.getItem(GUEST_HOMEPAGE_STORAGE_KEY);
-          if (raw) guest = JSON.parse(raw) as GuestShape;
-        } catch {
-          // ignore corrupt storage
-        }
-        if (!pub && !guest) return;
-        setCustomization((prev) => {
-          let next = { ...prev };
-          if (pub) {
-            next = {
-              ...next,
-              theme: pub.theme || next.theme,
-              title: pub.title ?? '',
-              subtitle: pub.subtitle ?? '',
-              description: pub.description ?? '',
-              accentColor: pub.accentColor ?? '',
-              heroImage: pub.heroImage ?? '',
-              enabled: pub.enabled ?? false,
-              status: pub.status ?? 'draft'
-            };
-          }
-          if (guest) {
-            next = {
-              ...next,
-              theme: guest.theme || next.theme,
-              title: guest.title ?? next.title,
-              subtitle: guest.subtitle ?? next.subtitle,
-              description: guest.description ?? next.description,
-              accentColor: guest.accentColor ?? next.accentColor,
-              heroImage: guest.heroImage ?? next.heroImage,
-              enabled: guest.enabled ?? next.enabled,
-              status: guest.status ?? next.status
-            };
-          }
-          return next;
-        });
-      })();
-      return () => {
-        cancelled = true;
-      };
+      // For visitors who are not logged in, always show the default homepage.
+      // Do not load any published/guest customization so the landing looks like the default (second image).
+      setCustomization({
+        enabled: false,
+        status: 'draft',
+        theme: 'default',
+        title: '',
+        subtitle: '',
+        description: '',
+        heroImage: '',
+        accentColor: ''
+      });
+      return;
     }
 
     const uid = readStoredUserId();

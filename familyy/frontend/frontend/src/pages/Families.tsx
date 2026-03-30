@@ -830,7 +830,10 @@ const Families: React.FC = () => {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <FaUsers size={16} color={colors.muted} />
                     <span style={{ color: colors.body, fontSize: '14px' }}>
-                      {family.members.length} members
+                      {(() => {
+                        const count = Array.isArray(family.members) ? family.members.length : 0;
+                        return `${count} ${count === 1 ? 'member' : 'members'}`;
+                      })()}
                     </span>
                   </div>
                 </div>

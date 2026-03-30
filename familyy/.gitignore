@@ -1,0 +1,23 @@
+# Docs
+*.md
+
+# Logs
+*.log
+
+# Env files
+.env*
+*.env*
+
+# Uploads (important)
+fami-backend/fami-backend/uploads/
+
+# Node modules
+node_modules/
+
+# Data files
+*.xlsx
+*.csv
+
+# Mac junk
+__MACOSX/
+.DS_Store

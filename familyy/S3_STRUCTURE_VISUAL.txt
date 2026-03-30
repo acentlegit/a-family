@@ -1,0 +1,50 @@
+========================================
+S3 BUCKET STRUCTURE FOR fami.live
+========================================
+
+Your S3 bucket should look like this:
+
+fami-frontend/ (or your bucket name)
+│
+├── index.html                    ← Main entry point (REQUIRED)
+├── favicon.ico                   ← Site icon
+├── logo192.png                   ← App logo
+├── logo512.png                   ← App logo
+├── manifest.json                 ← PWA manifest
+├── robots.txt                    ← SEO file
+├── asset-manifest.json           ← Build manifest
+├── config.js                     ← Runtime config (if any)
+│
+└── static/                       ← Static assets folder
+    │
+    ├── css/
+    │   ├── main.[hash].css       ← Main stylesheet
+    │   └── main.[hash].css.map   ← Source map
+    │
+    └── js/
+        ├── main.[hash].js        ← Main JavaScript bundle
+        ├── main.[hash].js.map    ← Source map
+        └── main.[hash].js.LICENSE.txt
+
+========================================
+IMPORTANT NOTES:
+========================================
+
+1. Upload ALL files from: frontend/frontend/build/
+2. Upload to BUCKET ROOT (not in a subfolder)
+3. Maintain the exact folder structure shown above
+4. The static/ folder MUST be preserved
+
+========================================
+UPLOAD INSTRUCTIONS:
+========================================
+
+Option 1: Upload entire build folder contents
+   Source: frontend/frontend/build/*
+   Destination: S3 bucket root
+
+Option 2: Upload folder by folder
+   - Upload index.html, favicon.ico, etc. to root
+   - Upload static/ folder as-is to root
+
+========================================

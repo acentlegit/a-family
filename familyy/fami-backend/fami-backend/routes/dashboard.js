@@ -35,7 +35,7 @@ router.get('/', protect, async (req, res) => {
       });
     }
 
-    const [totalMemories, totalEvents, totalMembers, recentMemories, recentEvents] = await Promise.all([
+    const [totalMemories, totalEvents, memberCollectionCount, recentMemories, recentEvents] = await Promise.all([
       Memory.countDocuments({ family: { $in: familyIds } }),
       Event.countDocuments({ family: { $in: familyIds } }),
       Member.countDocuments({ family: { $in: familyIds } }),
@@ -50,6 +50,10 @@ router.get('/', protect, async (req, res) => {
         .limit(8)
         .lean()
     ]);
+
+    // Fallback for installs that haven't created separate Member docs but use embedded Family.members
+    const embeddedMemberCount = families.reduce((acc, f) => acc + ((f.members && Array.isArray(f.members)) ? f.members.length : 0), 0);
+    const totalMembers = Math.max(Number(memberCollectionCount) || 0, embeddedMemberCount);
 
     const stats = {
       totalFamilies: families.length,

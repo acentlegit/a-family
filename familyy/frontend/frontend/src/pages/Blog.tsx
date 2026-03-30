@@ -45,6 +45,8 @@ const Blog: React.FC = () => {
   const [viewMode, setViewMode] = useState<'all' | 'published' | 'drafts'>('all');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [newCommentText, setNewCommentText] = useState<Record<string, string>>({});
   
   const [newPost, setNewPost] = useState({
     title: '',
@@ -180,9 +182,29 @@ const Blog: React.FC = () => {
 
     try {
       await api.post(`/blog/post/${postId}/comment`, { text });
-      loadPosts();
+      // Refresh just this post to get updated comments
+      const res = await api.get(`/blog/post/${postId}`);
+      if (res.data?.success && res.data?.data) {
+        setPosts((prev) => prev.map((p) => (p._id === postId ? res.data.data : p)));
+        setNewCommentText((prev) => ({ ...prev, [postId]: '' }));
+        setExpandedComments((prev) => ({ ...prev, [postId]: true }));
+      } else {
+        loadPosts();
+      }
     } catch (error) {
       console.error('Error adding comment:', error);
+    }
+  };
+
+  const openPostAndIncrementViews = async (postId: string) => {
+    try {
+      const res = await api.get(`/blog/post/${postId}`);
+      if (res.data?.success && res.data?.data) {
+        setPosts((prev) => prev.map((p) => (p._id === postId ? res.data.data : p)));
+        setExpandedComments((prev) => ({ ...prev, [postId]: true }));
+      }
+    } catch (error) {
+      console.error('Error opening post:', error);
     }
   };
 
@@ -362,11 +384,11 @@ const Blog: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       onClick={() => {
-                        setSelectedPost({ ...post });
-                        setShowEditModal(true);
+                      setSelectedPost({ ...post });
+                      setShowEditModal(true);
                       }}
                       style={{
                         padding: '8px 12px',
@@ -410,7 +432,7 @@ const Blog: React.FC = () => {
                     marginBottom: '16px',
                     lineHeight: '1.6'
                   }}>
-                    {post.excerpt}
+                  {post.excerpt}
                   </p>
                 )}
 
@@ -446,7 +468,7 @@ const Blog: React.FC = () => {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: '24px', alignItems: 'center', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
+              <div style={{ display: 'flex', gap: '24px', alignItems: 'center', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
                   <button
                     onClick={() => handleLike(post._id)}
                     style={{
@@ -464,14 +486,83 @@ const Blog: React.FC = () => {
                     <FaHeart style={{ color: post.likes.length > 0 ? '#ef4444' : colors.muted }} />
                     {post.likes.length} {post.likes.length === 1 ? 'Like' : 'Likes'}
                   </button>
-                  <span style={{ color: colors.muted, fontSize: '14px' }}>
-                    <FaComment style={{ marginRight: '6px' }} />
-                    {post.comments.length} {post.comments.length === 1 ? 'Comment' : 'Comments'}
-                  </span>
-                  <span style={{ color: colors.muted, fontSize: '14px' }}>
-                    {post.views} {post.views === 1 ? 'view' : 'views'}
-                  </span>
+                <button
+                  onClick={() => openPostAndIncrementViews(post._id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: 'none',
+                    border: 'none',
+                    color: colors.body,
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    padding: '4px 8px'
+                  }}
+                >
+                  <FaComment style={{ marginRight: '2px' }} />
+                  {post.comments.length} {post.comments.length === 1 ? 'Comment' : 'Comments'}
+                </button>
+                <span style={{ color: colors.muted, fontSize: '14px' }}>
+                  {post.views} {post.views === 1 ? 'view' : 'views'}
+                </span>
                 </div>
+
+              {expandedComments[post._id] && (
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px dashed ${colors.border}` }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {post.comments.length === 0 ? (
+                      <p style={{ margin: 0, color: colors.muted, fontSize: '14px' }}>Be the first to comment.</p>
+                    ) : (
+                      post.comments.map((c) => (
+                        <div key={c._id} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '13px', color: colors.title, fontWeight: 600 }}>
+                            {c.user.firstName} {c.user.lastName || ''}
+                            <span style={{ marginLeft: '8px', color: colors.muted, fontWeight: 400 }}>
+                              {new Date(c.createdAt).toLocaleString()}
+                            </span>
+                          </span>
+                          <span style={{ fontSize: '14px', color: colors.body }}>{c.text}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    <input
+                      type="text"
+                      placeholder="Write a comment…"
+                      value={newCommentText[post._id] || ''}
+                      onChange={(e) =>
+                        setNewCommentText((prev) => ({ ...prev, [post._id]: e.target.value }))
+                      }
+                      style={{
+                        flex: 1,
+                        padding: '10px 12px',
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: '6px',
+                        background: colors.sectionBg,
+                        color: colors.body,
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      onClick={() => handleAddComment(post._id, newCommentText[post._id] || '')}
+                      style={{
+                        padding: '10px 14px',
+                        background: colors.primary,
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: 600
+                      }}
+                    >
+                      Post
+                    </button>
+                  </div>
+                </div>
+              )}
               </div>
             ))}
           </div>

@@ -5,16 +5,20 @@ import { useAuth } from '../context/AuthContext';
 import { FaUser, FaBell, FaLock, FaShieldAlt, FaCog } from 'react-icons/fa';
 import api, { getApiUrl } from '../config/api';
 
-// Normalize and join URLs safely to avoid malformed origins like "https:/.fami.live"
-const API_ORIGIN =
-  (process.env.REACT_APP_API_BASE || '').replace(/\/api$/, '') || 'https://api.fami.live';
-
-const normalizeUrl = (raw: string): string => {
-  if (!raw) return '';
-  const cleaned = raw
-    .replace('https:/.fami.live/api', 'https://api.fami.live')
-    .replace('http://localhost:5000', 'https://api.fami.live');
-  return new URL(cleaned, API_ORIGIN).href.replace(/([^:]\/)\/+/g, '$1');
+// Build avatar URL safely:
+// - If backend already returns an absolute URL, use it as-is
+// - Otherwise, prefix with a clean API base and ensure /uploads prefix
+const buildAvatarUrl = (src?: string): string => {
+  if (!src) return '';
+  if (/^https?:\/\//i.test(src)) return src.trim();
+  const rawBase =
+    (process.env.NEXT_PUBLIC_API_BASE_URL ||
+      process.env.REACT_APP_API_BASE_URL ||
+      process.env.REACT_APP_API_BASE ||
+      'https://api.fami.live').trim();
+  const base = rawBase.replace(/\/+$/, '').replace(/\/api\/?$/i, '');
+  const path = src.startsWith('/uploads/') ? src : src.startsWith('uploads/') ? `/${src}` : `/uploads/${src}`;
+  return `${base}${path}`;
 };
 
 const Settings: React.FC = () => {
@@ -214,19 +218,8 @@ const Settings: React.FC = () => {
         localStorage.setItem('user', JSON.stringify(updatedUser));
         
         // Log the constructed URL for debugging
-        const apiUrl = getApiUrl();
-        const baseUrl = apiUrl.replace('/api', '');
-        let finalUrl = '';
         if (updatedUser.avatar) {
-          if (updatedUser.avatar.startsWith('http://') || updatedUser.avatar.startsWith('https://')) {
-            finalUrl = updatedUser.avatar;
-          } else if (updatedUser.avatar.startsWith('/uploads/')) {
-            finalUrl = `${baseUrl}${updatedUser.avatar}`;
-          } else if (updatedUser.avatar.startsWith('uploads/')) {
-            finalUrl = `${baseUrl}/${updatedUser.avatar}`;
-          } else {
-            finalUrl = `${baseUrl}/uploads/${updatedUser.avatar}`;
-          }
+          const finalUrl = buildAvatarUrl(updatedUser.avatar);
           console.log('✅ Final avatar URL that will be used:', finalUrl);
         }
         
@@ -437,6 +430,11 @@ const Settings: React.FC = () => {
                         const avatarUrl = user.avatar;
                         console.log('🔍 Avatar URL from user object:', avatarUrl);
                         
+                        // If backend already returned an absolute URL, use it directly
+                        if (/^https?:\/\//i.test(avatarUrl)) {
+                          return avatarUrl.trim();
+                        }
+                        
                         // Extract filename from the URL (handle both full URLs and relative paths)
                         let filename = '';
                         if (avatarUrl.includes('/uploads/')) {
@@ -457,7 +455,7 @@ const Settings: React.FC = () => {
                         }
                         
                         // Always construct URL using current API base URL to ensure it works
-                        const finalUrl = normalizeUrl(`/uploads/${filename}`);
+                        const finalUrl = buildAvatarUrl(filename);
                         
                         console.log('✅ Extracted filename:', filename);
                         console.log('✅ Constructed final URL using current API base:', finalUrl);
@@ -471,7 +469,7 @@ const Settings: React.FC = () => {
                           {avatarUrl && !avatarError ? (
                             <img
                               key={`avatar-${user?.avatar}`} // Force re-render when avatar URL changes
-                              src={avatarUrl}
+                              src={buildAvatarUrl(user?.avatar)}
                               alt={`${user?.firstName || ''} ${user?.lastName || ''}`}
                               style={{
                                 width: '120px',

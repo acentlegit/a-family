@@ -26,6 +26,10 @@ const Layout: React.FC<LayoutProps> = ({ children, selectedFamily }) => {
   // Helper function to reconstruct avatar URL
   const getAvatarUrl = (avatarUrl: string | undefined): string | null => {
     if (!avatarUrl) return null;
+    // If backend already returned an absolute URL, use it as-is
+    if (/^https?:\/\//i.test(avatarUrl)) {
+      return avatarUrl.trim();
+    }
 
     // Extract filename from the URL (handle both full URLs and relative paths)
     let filename = '';

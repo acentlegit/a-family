@@ -1,0 +1,109 @@
+========================================
+QUICK DEPLOYMENT COMMANDS
+========================================
+
+WINSCP UPLOAD STRUCTURE:
+------------------------
+Source (Local):
+  C:\MY APPLICATIONS\familyy\frontend\frontend\build\
+
+Destination (Server):
+  /home/ubuntu/fami-frontend/build/
+  OR
+  /var/www/html/
+
+Files to Upload:
+  - index.html
+  - asset-manifest.json
+  - manifest.json
+  - robots.txt
+  - favicon.ico
+  - logo files
+  - static/ (entire folder with js and css)
+
+
+PUTTY COMMANDS (Run in order):
+-------------------------------
+
+# 1. Navigate to frontend directory
+cd /home/ubuntu/fami-frontend
+
+# 2. Remove old build (if exists)
+rm -rf build/
+
+# 3. Verify new build uploaded (after WinSCP upload)
+ls -la build/
+ls -la build/static/js/
+ls -la build/static/css/
+
+# 4. Set permissions
+chmod -R 755 build/
+sudo chown -R www-data:www-data build/
+# OR
+sudo chown -R ubuntu:ubuntu build/
+
+# 5. Navigate to backend
+cd /home/ubuntu/fami-backend/fami-backend
+
+# 6. Restart backend server
+pm2 restart fami-server
+# OR if using systemd:
+sudo systemctl restart fami-backend
+
+# 7. Check backend status
+pm2 status
+pm2 logs fami-server --lines 20
+
+# 8. Restart nginx (if using)
+sudo nginx -t
+sudo systemctl restart nginx
+sudo systemctl status nginx
+
+# 9. Verify deployment
+curl http://localhost:5000/api/health
+curl https://api.fami.live/api/health
+curl https://www.fami.live
+
+
+BACKEND .ENV UPDATE:
+--------------------
+File: /home/ubuntu/fami-backend/fami-backend/.env
+
+Required Updates:
+DEFAULT_USER_EMAIL=arakala1926
+DEFAULT_USER_PASSWORD=a1926$2026
+DEFAULT_USER_FIRST_NAME=Default
+DEFAULT_USER_LAST_NAME=User
+BASE_URL=https://www.fami.live
+
+
+VERIFICATION:
+-------------
+1. Frontend: https://www.fami.live
+2. Login page: https://www.fami.live/login
+   - Fields should be EMPTY
+   - Type: arakala1926 / a1926$2026
+3. API: https://api.fami.live/api/health
+
+
+TROUBLESHOOTING:
+----------------
+# Check if backend is running
+ps aux | grep node
+pm2 list
+
+# Check nginx logs
+sudo tail -f /var/log/nginx/error.log
+
+# Check backend logs
+pm2 logs fami-server
+# OR
+tail -f /home/ubuntu/fami-backend/fami-backend/logs/app.log
+
+# Kill process on port 5000
+sudo lsof -i :5000
+sudo kill -9 <PID>
+
+# Restart everything
+pm2 restart all
+sudo systemctl restart nginx

@@ -56,12 +56,8 @@ const Login: React.FC = () => {
     checkDefaultUser();
   }, [email, DEFAULT_USER_EMAIL]);
 
-  // Set browser history so back button goes to home page
-  useEffect(() => {
-    // Push home page to browser history stack
-    // This makes the back button go to home page instead of previous page
-    window.history.pushState({ page: 'home' }, '', '/');
-  }, []);
+  // Do NOT override browser history. Let the natural back button behavior
+  // take the user back to wherever they came from (typically the Homepage).
 
   // Redirect if already logged in (only check once on mount)
   useEffect(() => {
