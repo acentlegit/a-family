@@ -34,11 +34,11 @@
     "yaml": "^2.8.2"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "eject": "react-scripts eject",
-    "test": "craco test",
-    "test:coverage": "craco test --coverage --watchAll=false"
+    "test": "react-scripts test",
+    "test:coverage": "react-scripts test --coverage --watchAll=false"
   },
   "eslintConfig": {
     "extends": [

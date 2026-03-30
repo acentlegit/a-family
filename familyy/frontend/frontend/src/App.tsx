@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -16,20 +16,20 @@ import Settings from './pages/Settings';
 import Notifications from './pages/Notifications';
 
 // Pages
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const AcceptInvite = lazy(() => import('./pages/AcceptInvite'));
-const AdminPanel = lazy(() => import('./pages/AdminPanel'));
-const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
-const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
-const Onboarding = lazy(() => import('./pages/Onboarding'));
-const GoogleDriveCallback = lazy(() => import('./pages/GoogleDriveCallback'));
-const WebsiteAdmin = lazy(() => import('./pages/WebsiteAdmin'));
-const Bios = lazy(() => import('./pages/Bios'));
-const Blog = lazy(() => import('./pages/Blog'));
-const Homepage = lazy(() => import('./pages/Homepage'));
+const Login = React.lazy(() => import('./pages/Login'));
+const Register = React.lazy(() => import('./pages/Register'));
+const ForgotPassword = React.lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const AcceptInvite = React.lazy(() => import('./pages/AcceptInvite'));
+const AdminPanel = React.lazy(() => import('./pages/AdminPanel'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const SuperAdmin = React.lazy(() => import('./pages/SuperAdmin'));
+const Onboarding = React.lazy(() => import('./pages/Onboarding'));
+const GoogleDriveCallback = React.lazy(() => import('./pages/GoogleDriveCallback'));
+const WebsiteAdmin = React.lazy(() => import('./pages/WebsiteAdmin'));
+const Bios = React.lazy(() => import('./pages/Bios'));
+const Blog = React.lazy(() => import('./pages/Blog'));
+const Homepage = React.lazy(() => import('./pages/Homepage'));
 
 const queryClient = new QueryClient();
 
